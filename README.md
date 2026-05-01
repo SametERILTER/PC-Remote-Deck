@@ -1,5 +1,7 @@
 # PCKontrol - Uzaktan Bilgisayar Kontrol Sistemi
 
+[English Version (README_EN.md)](README_EN.md)
+
 PCKontrol, modern yazılım teknolojileri kullanarak Windows işletim sistemli bilgisayarların mobil cihazlar üzerinden tam yetkiyle yönetilmesini sağlayan açık kaynaklı bir projedir. Bu sistem, özellikle yatağınızdan veya koltuğunuzdan kalkmadan bilgisayarınızı yönetmenize, medya içeriklerini kontrol etmenize ve dosya transferi yapmanıza olanak tanır.
 
 ## Proje Hakkında
