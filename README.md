@@ -35,8 +35,8 @@ Backend sunucusu, Windows'un yerel API'lerine (user32.dll, dwmapi.dll, psapi.dll
 
 ### Mobil Uygulama (React Native)
 Mobil uygulama, React Native ve Expo ile geliştirilmiştir. React Native Reanimated ile pürüzsüz ve akıcı animasyonlar sağlanmıştır. Uygulama ile:
-- # Deck ekranı:
-- Deck ekranındaki özelleştirilebilir butonlar ile telefonunuzu bir stream deck gibi kullanabilirsiniz. Ayrıca yine bu ekrandan bilgisayarınızı tek tuşka kilitleyebilirsiniz.
+- #### Deck ekranı:
+     Deck ekranındaki özelleştirilebilir butonlar ile telefonunuzu bir stream deck gibi kullanabilirsiniz. Ayrıca yine bu ekrandan bilgisayarınızı tek tuşka kilitleyebilirsiniz.
 
 - Bilgisayarınıza direkt powershell komutları gönderebilirsiniz.
 - Bilgisayarınızın anlık ekran görünütüsünü alabilirsiniz.
