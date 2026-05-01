@@ -31,7 +31,7 @@ Sistem iki temel parçadan oluşmaktadır:
 ### Backend (Go)
 Backend sunucusu, Windows'un yerel API'lerine (user32.dll, dwmapi.dll, psapi.dll) doğrudan erişim sağlamak için syscall paketini kullanır. Bu sayede düşük gecikme süresiyle pencere yönetimi ve girdi simülasyonu yapılır. Sunucu başlatıldığında yerel ağdaki IP adresini otomatik olarak tespit eder ve mobil uygulama ile kolay eşleşme için bir QR kod üretir. Mobil uygulamadan bu QR kod okutularak gerekli bağlantı bilgileri otomatik olarak sağlanır.
 
-## Not: Sistem, yerel ağ (Wi-Fi) üzerinden HTTP protokolü ile haberleşir. Bilgisayarınız yerel bir sunucu (örneğin 192.168.1.x gibi) görevi görür ve mobil uygulama bu adrese istekler gönderir. Bu nedenle her iki cihazın da aynı ağa bağlı olması zorunludur.
+#### Not: Sistem, yerel ağ (Wi-Fi) üzerinden HTTP protokolü ile haberleşir. Bilgisayarınız yerel bir sunucu (örneğin 192.168.1.x gibi) görevi görür ve mobil uygulama bu adrese istekler gönderir. Bu nedenle her iki cihazın da aynı ağa bağlı olması zorunludur.
 
 ### Mobil Uygulama (React Native)
 Mobil uygulama, React Native ve Expo ile geliştirilmiştir. React Native Reanimated ile pürüzsüz ve akıcı animasyonlar sağlanmıştır. Uygulama ile:
