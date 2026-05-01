@@ -36,8 +36,6 @@ var (
 	procPostMessageW     = user32.NewProc("PostMessageW")
 	procSendMessageW     = user32.NewProc("SendMessageW")
 
-	// Mouse için yeni ve daha basit fonksiyonlar
-	procSetCursorPos = user32.NewProc("SetCursorPos")
 	procGetCursorPos = user32.NewProc("GetCursorPos")
 	procMouseEvent   = user32.NewProc("mouse_event")
 
@@ -105,8 +103,6 @@ type KEYBDINPUT struct {
 // Global INPUT struct that works on both 32-bit and 64-bit Windows
 type INPUT struct {
 	Type uint32
-	// 64-bit sistemlerde Type (4 byte) ile Data (Union) arasında 4 byte'lık padding (boşluk) gerekir.
-	// Bu sayede Union kısmı 8-byte hizalı olur.
 	Padding uint32
 	Data    [32]byte
 }
@@ -114,7 +110,6 @@ type INPUT struct {
 func mouseEvent(flags uint32, dx, dy int32, data uint32) {
 	var input INPUT
 	input.Type = INPUT_MOUSE
-	// Padding 64 bit'te kritik, Data[0] artık 8. byte'dan başlıyor
 	mi := (*MOUSEINPUT)(unsafe.Pointer(&input.Data[0]))
 	mi.Flags = flags
 	mi.Dx = dx
@@ -145,7 +140,6 @@ func sendKey(vk uint16) {
 
 func typeString(text string) {
 	utf16Text := syscall.StringToUTF16(text)
-	// Last element is null terminator, skip it
 	for i := 0; i < len(utf16Text)-1; i++ {
 		char := utf16Text[i]
 
@@ -169,9 +163,7 @@ func typeString(text string) {
 }
 
 func speak(text string) {
-	// Tırnak işaretlerini temizle
 	text = strings.ReplaceAll(text, "\"", "'")
-	// Not: Dosya adı sabit olduğu için her seferinde üzerine yazar, yer kaplamaz.
 	psCommand := fmt.Sprintf(`
 		$text = "%s"
 		$url = "https://translate.google.com/translate_tts?ie=UTF-8&q=" + [uri]::EscapeDataString($text) + "&tl=tr&client=tw-ob"
@@ -225,20 +217,17 @@ func getWindows() []WindowInfo {
 	cb := syscall.NewCallback(func(hwnd uintptr, lparam uintptr) uintptr {
 		visible, _, _ := procIsWindowVisible.Call(hwnd)
 		if visible != 0 {
-			// Cloaked (gizlenmiş/askıya alınmış UWP) pencereleri filtrele
 			var cloaked int32
 			procDwmGetWindowAttribute.Call(hwnd, DWMWA_CLOAKED, uintptr(unsafe.Pointer(&cloaked)), 4)
 			if cloaked != 0 {
 				return 1
 			}
 
-			// Sadece ana pencereleri al (başka bir pencere tarafından sahiplenilmemiş)
 			owner, _, _ := procGetWindow.Call(hwnd, GW_OWNER)
 			if owner != 0 {
 				return 1
 			}
 
-			// Tool pencerelerini (alt bilgi çubukları, overlay'ler vb.) devre dışı bırak
 			index := int32(GWL_EXSTYLE)
 			exStyle, _, _ := procGetWindowLongW.Call(hwnd, uintptr(index))
 			if int32(exStyle)&WS_EX_TOOLWINDOW != 0 {
@@ -252,7 +241,6 @@ func getWindows() []WindowInfo {
 			procGetWindowTextW.Call(hwnd, uintptr(unsafe.Pointer(&title[0])), 256)
 			tStr := syscall.UTF16ToString(title)
 
-			// Sistem pencerelerini ve boş başlıkları filtrele
 			if tStr != "" &&
 				tStr != "Program Manager" &&
 				tStr != "Start" &&
@@ -903,8 +891,9 @@ func main() {
 
 		log.Printf("Dosya alınıyor: %s (%d bytes)\n", handler.Filename, handler.Size)
 
-		// Masaüstü yolu
-		desktopPath := "C:\\Users\\samet\\Desktop\\" + handler.Filename
+		// User Desktop path
+		homeDir, _ := os.UserHomeDir()
+		desktopPath := homeDir + "\\Desktop\\" + handler.Filename
 		dst, err := os.Create(desktopPath)
 		if err != nil {
 			log.Println("Dosya oluşturma hatası:", err)
@@ -978,10 +967,8 @@ func main() {
 		fmt.Fprint(w, "OK")
 	})
 
-	// 5 saniyede bir terminale "canlıyım" mesajı basan bir dongü (Kontrol amaçlı)
 	go func() {
 		for {
-			//fmt.Printf("[%s] Sunucu aktif, bağlantı bekliyor...\n", time.Now().Format("15:04:05"))
 			time.Sleep(5 * time.Second)
 		}
 	}()
