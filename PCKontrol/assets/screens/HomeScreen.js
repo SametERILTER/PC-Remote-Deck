@@ -19,7 +19,6 @@ const FEATURES = [
     { id: 'Statistics', icon: 'chart-pie', color: '#93C5FD', label: 'features.statistics' },
     { id: 'Speak', icon: 'bullhorn', color: '#F9A8D4', label: 'features.speak' },
     { id: 'Power', icon: 'power-off', color: '#FCA5A5', label: 'features.power' },
-    { id: 'Modes', icon: 'magic', color: '#E9D5FF', label: 'features.modes' },
 ];
 
 const HomeScreen = ({ navigation }) => {

@@ -1,80 +1,76 @@
-# PCKontrol - Uzaktan Bilgisayar Kontrol Sistemi
+# PCKontrol - Remote PC Control System
 
-[English Version (README_EN.md)](README_EN.md)
+[Türkçe Versiyon (README_TR.md)](README_TR.md)
 
-PCKontrol, modern yazılım teknolojileri kullanarak Windows işletim sistemli bilgisayarların mobil cihazlar üzerinden tam yetkiyle yönetilmesini sağlayan açık kaynaklı bir projedir. Bu sistem, özellikle yatağınızdan veya koltuğunuzdan kalkmadan bilgisayarınızı yönetmenize, medya içeriklerini kontrol etmenize ve dosya transferi yapmanıza olanak tanır.
+PCKontrol is an open-source project that enables full remote management of Windows-based computers via mobile devices using modern software technologies. This system allows you to manage your computer, control media content, and perform file transfers without leaving your bed or sofa.
 
-## Proje Hakkında
+## About the Project
 
-Sistem iki temel parçadan oluşmaktadır:
-1. Windows işletim sistemi üzerinde çalışan ve düşük sistem kaynağı tüketen Go dilinde yazılmış bir sunucu (Backend).
-2. React Native ve Expo ile geliştirilmiş, hem Android hem de iOS cihazlarda çalışabilen modern bir mobil uygulama.
+The system consists of two main parts:
+1. A lightweight Go-based server (Backend) running on Windows with minimal resource consumption.
+2. A modern mobile application built with React Native and Expo, compatible with both Android and iOS devices.
 
-## Detaylı Özellikler
+## Detailed Features
 
-### Uzaktan Kontrol ve Girdi Yönetimi
-- Mouse Simülasyonu: Telefon ekranını bir touchpad gibi kullanarak imleci pürüzsüz bir şekilde hareket ettirebilir, tıklama yapabilir ve kaydırma (scroll) işlemlerini gerçekleştirebilirsiniz.
-- Klavye Entegrasyonu: Telefon klavyesini kullanarak bilgisayara metin gönderebilir, özel tuş kombinasyonlarını (Alt+Tab, Enter, Backspace vb.) çalıştırabilirsiniz.
+### Remote Control and Input Management
+- **Mouse Simulation:** Use your phone screen as a touchpad to move the cursor smoothly, perform clicks, and scroll.
+- **Keyboard Integration:** Send text to your computer using your phone's keyboard and execute special key combinations (Alt+Tab, Enter, Backspace, etc.).
 
-### Multimedya ve Uygulama Yönetimi
-- Ses Kontrolü: Bilgisayarın ses seviyesini hassas bir şekilde ayarlayabilir veya tamamen sessize alabilirsiniz.
-- Medya Oynatıcı: Spotify ve diğer medya oynatıcılar için oynat, duraklat, sonraki ve önceki şarkı gibi kontrolleri kullanabilirsiniz.
-- Tarayıcı Kısayolları: Google Chrome üzerinde yeni sekme açma, sekme kapatma, sayfayı yenileme ve gizli sekme gibi işlemleri tek tuşla yapabilirsiniz.
-- Belirli uygulamalara özel (şimdilik sadece Chrome, Spotify ve Antigravity de geçerli) tuşlar otomatik olarak o uygulamaların pencereleri aktif olduğunda görünür. Ayrıca Youtube'da video izlerken bir video kontrol barı çıkmaktadır.
+### Multimedia and Application Management
+- **Volume Control:** Adjust your computer's volume precisely or mute it entirely.
+- **Media Player:** Use play, pause, next, and previous controls for Spotify and other media players.
+- **Browser Shortcuts:** Perform actions like opening/closing tabs, refreshing pages, and incognito mode on Google Chrome with a single tap.
+- **App-Specific Context:** Custom buttons for specific apps (Chrome, Spotify, and Antigravity) appear automatically when their windows are active. A dedicated control bar also appears while watching YouTube.
 
-### Gelişmiş Araçlar
-- Dosya Transferi: Mobil cihazınızdaki dosyaları (fotoğraf, doküman vb.) doğrudan bilgisayarınızın masaüstüne gönderebilirsiniz.
-- Ekran Görüntüsü: Bilgisayarınızın ekranını anlık olarak telefonunuzdan görebilirsiniz.
-- Sistem İstatistikleri: Bilgisayarınızın CPU kullanımı, RAM durumu, aktif ve eğer varsa NVIDIA GPU değerlerini (sıcaklık ve kullanım) canlı olarak izleyebilirsiniz.
-- Özel Komutlar: Sık kullandığınız PowerShell veya CMD komutlarını uygulama üzerinden butonlara atayarak tek dokunuşla çalıştırabilirsiniz.
+### Advanced Tools
+- **File Transfer:** Send files (photos, documents, etc.) from your mobile device directly to your computer's desktop.
+- **File Explorer:** Browse, open, and manage directories and files on your PC from your phone.
+- **Screen Capture:** View your computer's screen in real-time from your phone.
+- **System Statistics:** Live monitor CPU usage, RAM status, active application info, and NVIDIA GPU values (temperature and usage) if available.
+- **Custom Commands:** Assign frequently used PowerShell or CMD commands to buttons in the app and execute them with one touch.
 
-## Teknik Mimari
+## Technical Architecture
 
 ### Backend (Go)
-Backend sunucusu, Windows'un yerel API'lerine (user32.dll, dwmapi.dll, psapi.dll) doğrudan erişim sağlamak için syscall paketini kullanır. Bu sayede düşük gecikme süresiyle pencere yönetimi ve girdi simülasyonu yapılır. Sunucu başlatıldığında yerel ağdaki IP adresini otomatik olarak tespit eder ve mobil uygulama ile kolay eşleşme için bir QR kod üretir. Mobil uygulamadan bu QR kod okutularak gerekli bağlantı bilgileri otomatik olarak sağlanır.
+The backend server uses the `syscall` package to directly access Windows native APIs (user32.dll, dwmapi.dll, psapi.dll). This ensures low-latency window management and input simulation. Upon startup, the server automatically detects the local IP address and generates a QR code for easy pairing with the mobile app.
 
-#### Not: Sistem, yerel ağ (Wi-Fi) üzerinden HTTP protokolü ile haberleşir. Bilgisayarınız yerel bir sunucu (örneğin 192.168.1.x gibi) görevi görür ve mobil uygulama bu adrese istekler gönderir. Bu nedenle her iki cihazın da aynı ağa bağlı olması zorunludur.
+> **Note:** The system communicates over the local network (Wi-Fi) using HTTP protocol. Your computer acts as a local server (e.g., 192.168.1.x) and the mobile app sends requests to this address. Both devices must be connected to the same local network.
 
-### Mobil Uygulama (React Native)
-Mobil uygulama, React Native ve Expo ile geliştirilmiştir. React Native Reanimated ile pürüzsüz ve akıcı animasyonlar sağlanmıştır. Uygulama ile:
-- #### Deck ekranı:
-     Deck ekranındaki özelleştirilebilir butonlar ile telefonunuzu bir stream deck gibi kullanabilirsiniz. Ayrıca yine bu ekrandan bilgisayarınızı tek tuşka kilitleyebilirsiniz.
+### Mobile App (React Native)
+The mobile app is developed using React Native and Expo with a modern dark theme and tactile controls:
+- **Deck Screen:** Use your phone like a Stream Deck with customizable 3D push-down mechanical buttons. You can also lock your PC with a single tap.
+- **Direct Commands:** Send PowerShell commands directly to your PC.
+- **Screen Mirroring:** Get instant screenshots of your PC.
+- **Remote Mouse/Keyboard:** Use your phone as a wireless input device.
+- **Window Management:** Move and manage open windows on your PC.
+- **File Explorer & Transfer:** Rapidly transfer and explore files between phone and PC.
+- **Live Stats:** Real-time CPU, RAM, and GPU dashboard.
 
-- Bilgisayarınıza direkt powershell komutları gönderebilirsiniz.
-- Bilgisayarınızın anlık ekran görünütüsünü alabilirsiniz.
-- Telefonu uzaktan klavye ve mouse olarak kullanabilirsiniz.
-- Bilgisayarınızdaki açık olan pencereleri yönetebilirsiniz. (Henüz tam anlamıyla düzgün çalışmıyor)
-- Telefonunuzdan bilgisayarınıza hızlı bir şekilde dosya gönderebilirsiniz (Şimdilik sadece tek resim gönderilebiliyor)
-- Modlar sayfasıyla tek tuşla birbiri ardınca gelen komutları yerine getirebilirsiniz.
-- İstatistikler sayfasında bilgisayarınızın anlık CPU, RAM ve GPU bilgilerini görebilirsiniz.
-- Ses kontrolü ile bilgisayarınızın ses seviyesini ayarlayabilir veya tamamen sessize alabilirsiniz. (Ses kaydırıcısı henüz tam düzgün çalışmıyor)
+## Installation and Usage
 
-## Kurulum ve Kullanım Talimatları
+### Server Setup (Windows)
+1. Ensure Go is installed on your computer.
+2. Navigate to the `backend` directory.
+3. Run `go mod tidy` to install dependencies.
+4. Run `go run main.go` to start the server.
+5. Keep the QR code visible in your terminal for pairing.
 
-### Sunucunun Hazırlanması (Windows)
-1. Bilgisayarınızda Go dilinin yüklü olduğundan emin olun.
-2. backend dizinine gidin.
-3. Gerekli kütüphaneleri yüklemek için terminalde go mod tidy komutunu çalıştırın.
-4. go run main.go komutu ile sunucuyu başlatın.
-5. Terminalde beliren QR kodu telefonunuza okutmak üzere hazır tutun.
+### Mobile App Setup
+1. Navigate to the `PCKontrol` directory.
+2. Install dependencies using `npm install` or `yarn`.
+3. Run `npx expo start` to launch the app.
+4. Open the app via Expo Go and scan the QR code from the PC.
 
-### Mobil Uygulamanın Başlatılması
-1. PCKontrol dizinine gidin.
-2. npm install veya yarn komutu ile bağımlılıkları yükleyin.
-3. npx expo start komutunu çalıştırın.
-4. Expo Go uygulaması veya oluşturduğunuz build ile uygulamayı açın.
-5. Ayarlar kısmından veya ana ekrandan bilgisayarınızdaki QR kodu taratarak bağlantıyı kurun.
+## Security Notice
 
-## Güvenlik Bildirimi
+This application has powerful features like Remote Code Execution and file system access. For your safety:
+- Only use the app on trusted local networks (e.g., home Wi-Fi).
+- Do not open the server port to the internet (Port Forwarding).
+- Do not leave the server active on unknown or untrusted networks.
 
-Bu uygulama, bilgisayar üzerinde tam yetkili komut çalıştırma (Remote Code Execution) ve dosya sistemi erişimi gibi güçlü özelliklere sahiptir. Güvenliğiniz için şu noktalara dikkat etmeniz önemlidir:
-- Uygulamayı yalnızca güvendiğiniz yerel ağlarda (ev Wi-Fi gibi) kullanın.
-- Sunucu portunu modem üzerinden dış dünyaya (Port Forwarding) açmayınız.
-- Bilinmeyen veya güvenilmeyen ağlarda sunucuyu aktif bırakmayınız.
+## License and Contribution
 
-## Lisans ve Katkı
+This project is developed for educational and personal use. Feel free to submit Pull Requests or report issues on GitHub.
 
-Bu proje eğitim ve kişisel kullanım amacıyla geliştirilmiştir. Geliştirilmesine katkıda bulunmak için Pull Request gönderebilir veya karşılaştığınız hataları Issues kısmından bildirebilirsiniz.
-
-## İletişim
-sametbilal34@gmail.com maili üzerinden bana ulaşabilirsiniz. Proje genel olarak çalışsa da eksik olan kısımları bulunmaktadır. Bu konuda yardım eden herkese teşekkür ederim.
+## Contact
+You can reach me at **sametbilal34@gmail.com**. While the project is functional, some features are still actively improving. Thanks to everyone who contributes!
