@@ -17,6 +17,7 @@ export const ALL_DECK_BUTTONS = [
     { id: '17', title: 'Görev Yön.', icon: 'tasks', library: 'FontAwesome5', color: '#34495E', endpoint: '/task-manager' },
     { id: '18', title: 'Mikrofon', icon: 'microphone-slash', library: 'FontAwesome5', color: '#D35400', endpoint: '/toggle-mic' },
     { id: '19', title: 'Hava Durumu', icon: 'cloud-sun', library: 'FontAwesome5', color: '#3498DB', endpoint: '/weather' },
+    { id: '20', title: 'Pencereleri Gör', icon: 'th-large', library: 'FontAwesome5', color: '#9B59B6', endpoint: '/windows-tab' },
 
     // Chrome Özel Butonlar
     { id: 'c1', title: 'Yeni Sekme', icon: 'plus-circle', library: 'FontAwesome5', color: '#EA4335', endpoint: '/chrome-new-tab' },
@@ -39,7 +40,7 @@ export const ALL_DECK_BUTTONS = [
     { id: 'a5', title: 'Çalıştır', icon: 'play', library: 'FontAwesome5', color: '#333333', endpoint: '/code-run' },
 ];
 
-export const DEFAULT_DECK_IDS = ['1', '2', '3', '15', '10', '4', '5', '6', '7', '8', '9', '11', '13', '14', '16', '17', '18', '19'];
+export const DEFAULT_DECK_IDS = ['1', '2', '3', '15', '10', '4', '5', '6', '7', '8', '9', '11', '13', '14', '16', '17', '18', '20'];
 export const CHROME_DECK_IDS = ['c1', 'c2', 'c3', 'c4', 'c5', 'c6'];
 export const SPOTIFY_DECK_IDS = ['s1', 's2', 's3', 's4', '9'];
 export const ANTIGRAVITY_DECK_IDS = ['a1', 'a2', 'a3', 'a4', 'a5'];

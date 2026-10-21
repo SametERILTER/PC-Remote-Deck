@@ -3,33 +3,49 @@ import {
     View,
     Text,
     StyleSheet,
-    SafeAreaView,
     TouchableOpacity,
     Image,
     ActivityIndicator,
     ScrollView,
     Dimensions,
+    Platform,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import * as NavigationBar from 'expo-navigation-bar';
 import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 const ScreenShotScreen = ({ navigation }) => {
+    const insets = useSafeAreaInsets();
+    const { t } = useTranslation();
     const [image, setImage] = useState(null);
     const [loading, setLoading] = useState(false);
     const [baseUrl, setBaseUrl] = useState('');
 
     useEffect(() => {
         const unsubscribeFocus = navigation.addListener('focus', () => {
-            NavigationBar.setVisibilityAsync('hidden');
-            NavigationBar.setBehaviorAsync('overlay-swipe');
-            ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE_RIGHT);
+            if (Platform.OS === 'android' && NavigationBar?.setVisibilityAsync) {
+                try {
+                    NavigationBar.setVisibilityAsync('hidden');
+                } catch (e) {}
+            }
+            try {
+                ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE_RIGHT);
+            } catch (e) {}
         });
 
         const unsubscribeBlur = navigation.addListener('blur', () => {
-            NavigationBar.setVisibilityAsync('visible');
+            if (Platform.OS === 'android' && NavigationBar?.setVisibilityAsync) {
+                try {
+                    NavigationBar.setVisibilityAsync('visible');
+                } catch (e) {}
+            }
+            try {
+                ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+            } catch (e) {}
         });
 
         loadSettings();
@@ -70,25 +86,33 @@ const ScreenShotScreen = ({ navigation }) => {
         }
     };
 
-    const handleBack = () => {
-        navigation.goBack();
-    };
-
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
             <StatusBar hidden />
-            <View style={styles.header}>
-                <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-                    <FontAwesome5 name="chevron-left" size={16} color="#E1E1E1" />
+            
+            {/* Header Overlay */}
+            <View style={[
+                styles.header, 
+                { 
+                    top: Math.max(insets.top, 16), 
+                    left: Math.max(insets.left, 20) 
+                }
+            ]}>
+                <TouchableOpacity 
+                    onPress={() => navigation.goBack()} 
+                    style={styles.backButton}
+                    activeOpacity={0.7}
+                >
+                    <FontAwesome5 name="chevron-left" size={13} color="#E2E8F0" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>EKRAN</Text>
+                <Text style={styles.headerTitle}>{t('screenshot.title')}</Text>
             </View>
 
             <View style={styles.content}>
                 {loading ? (
                     <View style={styles.centerContainer}>
-                        <ActivityIndicator size="large" color="#4285F4" />
-                        <Text style={styles.loadingText}>Görüntü alınıyor...</Text>
+                        <ActivityIndicator size="large" color="#FFFFFF" />
+                        <Text style={styles.loadingText}>{t('screenshot.loading')}</Text>
                     </View>
                 ) : image ? (
                     <ScrollView
@@ -105,65 +129,68 @@ const ScreenShotScreen = ({ navigation }) => {
                     </ScrollView>
                 ) : (
                     <View style={styles.centerContainer}>
-                        <FontAwesome5 name="camera" size={40} color="#1E1E1E" />
-                        <Text style={styles.placeholderText}>Henüz görüntü alınmadı</Text>
+                        <View style={styles.emptyIconBox}>
+                            <FontAwesome5 name="camera" size={24} color="#717684" />
+                        </View>
+                        <Text style={styles.placeholderText}>{t('screenshot.empty')}</Text>
                     </View>
                 )}
             </View>
 
-            <View style={styles.footer}>
+            {/* Footer Action */}
+            <View style={[
+                styles.footer, 
+                { 
+                    bottom: Math.max(insets.bottom, 16), 
+                    right: Math.max(insets.right, 20) 
+                }
+            ]}>
                 <TouchableOpacity
                     style={[styles.captureButton, loading && styles.disabledButton]}
                     onPress={takeScreenshot}
                     disabled={loading}
+                    activeOpacity={0.8}
                 >
-                    <FontAwesome5 name="camera" size={16} color="#E1E1E1" style={{ marginRight: 10 }} />
-                    <Text style={styles.captureButtonText}>Yeni Görüntü Al</Text>
+                    <FontAwesome5 name="camera" size={14} color="#080808" style={{ marginRight: 8 }} />
+                    <Text style={styles.captureButtonText}>{t('screenshot.button')}</Text>
                 </TouchableOpacity>
             </View>
-        </SafeAreaView>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#0e0e0e',
+        backgroundColor: '#080808',
     },
     header: {
         position: 'absolute',
-        top: 25,
-        left: 25,
         zIndex: 10,
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(14, 14, 14, 0.7)',
-        borderRadius: 20,
-        paddingRight: 20,
-        paddingLeft: 6,
-        paddingVertical: 6,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
+        backgroundColor: '#1E1F24',
+        borderRadius: 14,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        gap: 10,
     },
     backButton: {
-        width: 36,
-        height: 36,
-        borderRadius: 12,
-        backgroundColor: '#1a1a1a',
+        width: 30,
+        height: 30,
+        borderRadius: 8,
+        backgroundColor: '#27282F',
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 15,
     },
     headerTitle: {
-        fontFamily: 'SpaceGrotesk_700Bold',
-        fontSize: 20,
-        textAlign: 'left',
+        fontFamily: 'PlusJakartaSans_700Bold',
+        fontSize: 14,
         color: '#FFFFFF',
-        letterSpacing: 2,
     },
     content: {
         flex: 1,
-        backgroundColor: '#0e0e0e',
+        backgroundColor: '#080808',
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -172,20 +199,29 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
+    emptyIconBox: {
+        width: 56,
+        height: 56,
+        borderRadius: 18,
+        backgroundColor: '#1E1F24',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 12,
+    },
     loadingText: {
-        color: '#FFFFFF',
-        marginTop: 15,
-        fontFamily: 'SpaceGrotesk_500Medium',
-        backgroundColor: 'rgba(0,0,0,0.6)',
-        paddingHorizontal: 15,
-        paddingVertical: 5,
+        color: '#E2E8F0',
+        marginTop: 12,
+        fontFamily: 'PlusJakartaSans_500Medium',
+        backgroundColor: '#1E1F24',
+        paddingHorizontal: 14,
+        paddingVertical: 6,
         borderRadius: 10,
+        fontSize: 13,
     },
     placeholderText: {
-        color: '#222',
-        marginTop: 16,
-        fontFamily: 'SpaceGrotesk_500Medium',
-        fontSize: 14,
+        color: '#717684',
+        fontFamily: 'PlusJakartaSans_500Medium',
+        fontSize: 13,
     },
     imageScroll: {
         flexGrow: 1,
@@ -199,27 +235,25 @@ const styles = StyleSheet.create({
     },
     footer: {
         position: 'absolute',
-        bottom: 25,
-        right: 25,
         zIndex: 10,
     },
     captureButton: {
-        backgroundColor: '#00E5FF',
+        backgroundColor: '#FFFFFF',
         flexDirection: 'row',
-        paddingHorizontal: 25,
-        height: 54,
-        borderRadius: 18,
+        paddingHorizontal: 20,
+        height: 48,
+        borderRadius: 14,
         justifyContent: 'center',
         alignItems: 'center',
     },
     captureButtonText: {
-        color: '#000',
-        fontFamily: 'SpaceGrotesk_700Bold',
-        fontSize: 15,
+        color: '#080808',
+        fontFamily: 'PlusJakartaSans_700Bold',
+        fontSize: 14,
     },
     disabledButton: {
-        backgroundColor: '#2A2A2A',
-        opacity: 0.5,
+        backgroundColor: '#27282F',
+        opacity: 0.6,
     },
 });
 

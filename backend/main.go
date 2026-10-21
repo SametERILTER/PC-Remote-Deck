@@ -102,7 +102,7 @@ type KEYBDINPUT struct {
 
 // Global INPUT struct that works on both 32-bit and 64-bit Windows
 type INPUT struct {
-	Type uint32
+	Type    uint32
 	Padding uint32
 	Data    [32]byte
 }
@@ -173,19 +173,16 @@ func speak(text string) {
 		Add-Type -AssemblyName presentationCore
 		$player = New-Object System.Windows.Media.MediaPlayer
 		$player.Open($file)
-		# Yüklenmesini bekle
+
 		while ($player.Status -eq "Loading") { Start-Sleep -Milliseconds 100 }
 		
-		# Ses kanalını "ısıtma" (Warm-up) hilesi
 		$player.Play()
 		$player.Pause()
 		$player.Position = New-Object System.TimeSpan(0,0,0,0,0)
 		Start-Sleep -Milliseconds 600
 		
-		# Asıl çalma işlemi (Hızlandırma kaldırıldı, en stabil hal)
 		$player.Play()
 		
-		# Ses bitene kadar bekle
 		while ($player.Position -lt $player.NaturalDuration.TimeSpan) {
 			Start-Sleep -Milliseconds 100
 		}
@@ -421,10 +418,28 @@ func main() {
 	port := "9090"
 	mux := http.NewServeMux()
 
-	// Ses işleyiciyi başlat
 	go volumeWorker()
 
-	// API Rotaları
+	mux.HandleFunc("/set-clipboard", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			http.Error(w, "Sadece POST", http.StatusMethodNotAllowed)
+			return
+		}
+		var reqBody struct {
+			Text string `json:"text"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+			http.Error(w, "Bad Request", http.StatusBadRequest)
+			return
+		}
+
+		encoded := base64.StdEncoding.EncodeToString([]byte(reqBody.Text))
+		psCmd := fmt.Sprintf("[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('%s')) | Set-Clipboard", encoded)
+		exec.Command("powershell", "-Command", psCmd).Run()
+
+		fmt.Fprint(w, "Panoya kopyalandı")
+	})
+
 	mux.HandleFunc("/windows", func(w http.ResponseWriter, r *http.Request) {
 		windows := getWindows()
 		w.Header().Set("Content-Type", "application/json")
@@ -468,7 +483,6 @@ func main() {
 
 		output, err := runPowerShellWithOutput(command)
 		if err != nil {
-			// Hata olsa bile çıktıyı gönderiyoruz çünkü powershell hataları da çıktıda yazar
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprint(w, output)
 			return
@@ -522,7 +536,6 @@ func main() {
 			return
 		}
 
-		// Kanal üzerinden worker'a gönderiyoruz
 		select {
 		case volumeChan <- vol:
 		default:
@@ -547,7 +560,6 @@ func main() {
 		fmt.Fprint(w, "Sonraki Şarkı")
 	})
 
-	// Chrome Özel Kısayollar
 	mux.HandleFunc("/chrome-new-tab", func(w http.ResponseWriter, r *http.Request) {
 		runPowerShell("$w = New-Object -ComObject WScript.Shell; $w.SendKeys('^t')")
 		fmt.Fprint(w, "Chrome Yeni Sekme")
@@ -583,13 +595,11 @@ func main() {
 		fmt.Fprint(w, "Chrome Geri Git")
 	})
 
-	// Spotify Özel Kısayollar
 	mux.HandleFunc("/spotify-search", func(w http.ResponseWriter, r *http.Request) {
 		runPowerShell("$w = New-Object -ComObject WScript.Shell; $w.SendKeys('^l')")
 		fmt.Fprint(w, "Spotify Arama")
 	})
 
-	// Antigravity (Coding) Özel Kısayollar
 	mux.HandleFunc("/code-terminal", func(w http.ResponseWriter, r *http.Request) {
 		runPowerShell("$w = New-Object -ComObject WScript.Shell; $w.SendKeys('^{`}')")
 		fmt.Fprint(w, "Terminal Aç")
@@ -607,9 +617,18 @@ func main() {
 		}
 	})
 
+	mux.HandleFunc("/installed-apps", func(w http.ResponseWriter, r *http.Request) {
+		out, err := exec.Command("powershell", "-NoProfile", "-Command", "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-StartApps | ConvertTo-Json").Output()
+		if err != nil {
+			http.Error(w, "Uygulamalar listelenemedi", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(out)
+	})
+
 	mux.HandleFunc("/press-combo", func(w http.ResponseWriter, r *http.Request) {
 		keysStr := r.URL.Query().Get("keys")
-		// Örn: ^+s (CTRL+SHIFT+S) veya %{F4} (ALT+F4)
 		if keysStr != "" {
 			runPowerShell(fmt.Sprintf("$w = New-Object -ComObject WScript.Shell; $w.SendKeys('%s')", keysStr))
 			fmt.Fprint(w, "Kombinasyon Gönderildi")
@@ -702,6 +721,16 @@ func main() {
 		fmt.Fprint(w, "Mikrofon Aç/Kapatıldı")
 	})
 
+	mux.HandleFunc("/active-app", func(w http.ResponseWriter, r *http.Request) {
+		activeApp, activeTitle := getForegroundWindowInfo()
+		data := map[string]string{
+			"activeApp":   activeApp,
+			"activeTitle": activeTitle,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(data)
+	})
+
 	mux.HandleFunc("/stats", func(w http.ResponseWriter, r *http.Request) {
 		psCommand := `
 			$cpuObj = Get-CimInstance Win32_Processor | Select-Object -First 1
@@ -773,11 +802,42 @@ func main() {
 			stats["gpuName"] = parts[8]
 		}
 
-		// Terminale log bas
 		// log.Printf("[Stats] CPU:%s%%, RAM:%s%%, GPU:%s%% (%sC) Media: %s\n", stats["cpu"], stats["ram"], stats["gpuUse"], stats["gpuTemp"], stats["media"])
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(stats)
+	})
+
+	mux.HandleFunc("/windows-tab", func(w http.ResponseWriter, r *http.Request) {
+		var inputDownWin INPUT
+		inputDownWin.Type = INPUT_KEYBOARD
+		kiDownWin := (*KEYBDINPUT)(unsafe.Pointer(&inputDownWin.Data[0]))
+		kiDownWin.Vk = 0x5B // VK_LWIN
+		kiDownWin.Flags = 0
+
+		var inputDownTab INPUT
+		inputDownTab.Type = INPUT_KEYBOARD
+		kiDownTab := (*KEYBDINPUT)(unsafe.Pointer(&inputDownTab.Data[0]))
+		kiDownTab.Vk = 0x09 // VK_TAB
+		kiDownTab.Flags = 0
+
+		var inputUpTab INPUT
+		inputUpTab.Type = INPUT_KEYBOARD
+		kiUpTab := (*KEYBDINPUT)(unsafe.Pointer(&inputUpTab.Data[0]))
+		kiUpTab.Vk = 0x09
+		kiUpTab.Flags = KEYEVENTF_KEYUP
+
+		var inputUpWin INPUT
+		inputUpWin.Type = INPUT_KEYBOARD
+		kiUpWin := (*KEYBDINPUT)(unsafe.Pointer(&inputUpWin.Data[0]))
+		kiUpWin.Vk = 0x5B
+		kiUpWin.Flags = KEYEVENTF_KEYUP
+
+		procSendInput.Call(1, uintptr(unsafe.Pointer(&inputDownWin)), uintptr(unsafe.Sizeof(inputDownWin)))
+		procSendInput.Call(1, uintptr(unsafe.Pointer(&inputDownTab)), uintptr(unsafe.Sizeof(inputDownTab)))
+		procSendInput.Call(1, uintptr(unsafe.Pointer(&inputUpTab)), uintptr(unsafe.Sizeof(inputUpTab)))
+		procSendInput.Call(1, uintptr(unsafe.Pointer(&inputUpWin)), uintptr(unsafe.Sizeof(inputUpWin)))
+		fmt.Fprint(w, "Windows Tab Gönderildi")
 	})
 
 	mux.HandleFunc("/send-key", func(w http.ResponseWriter, r *http.Request) {
@@ -843,8 +903,6 @@ func main() {
 		dx, _ := strconv.ParseInt(dxStr, 10, 32)
 		dy, _ := strconv.ParseInt(dyStr, 10, 32)
 
-		// SetCursorPos yerine MOUSEEVENTF_MOVE kullanmak çok daha pürüzsüz sonuç verir
-		// çünkü Windows bu yöntemle taşınan fareye kendi ivmeleme/yumuşatma kurallarını uygular.
 		mouseEvent(MOUSEEVENTF_MOVE, int32(dx), int32(dy), 0)
 
 		fmt.Fprint(w, "Moved")
@@ -867,7 +925,6 @@ func main() {
 
 	mux.HandleFunc("/mouse-scroll", func(w http.ResponseWriter, r *http.Request) {
 		delta, _ := strconv.ParseInt(r.URL.Query().Get("delta"), 10, 32)
-		// mouse_event için wheel delta: MouseData (4. parametre)
 		procMouseEvent.Call(uintptr(MOUSEEVENTF_WHEEL), 0, 0, uintptr(int32(delta*120)), 0)
 		fmt.Fprint(w, "Scrolled")
 	})
@@ -907,19 +964,60 @@ func main() {
 			return
 		}
 
-		speak("Dosya başarıyla masaüstüne kaydedildi.")
+		//speak("Dosya başarıyla masaüstüne kaydedildi.")
 		fmt.Fprintf(w, "Başarıyla kaydedildi: %s", handler.Filename)
 	})
 
 	mux.HandleFunc("/mode-study", func(w http.ResponseWriter, r *http.Request) {
 		log.Println("Study Mode activated")
+
 		speak("Ders modu aktif ediliyor. İyi çalışmalar dilerim.")
-		// Önce Gemini
+
 		exec.Command("cmd", "/c", "start chrome https://gemini.google.com/app?hl=tr").Start()
 		time.Sleep(500 * time.Millisecond)
-		// Sonra Classroom
 		exec.Command("cmd", "/c", "start chrome https://classroom.google.com/u/0/").Start()
 		fmt.Fprint(w, "Study Mode activated")
+	})
+
+	mux.HandleFunc("/speak", func(w http.ResponseWriter, r *http.Request) {
+		text := r.URL.Query().Get("text")
+		if text != "" {
+			go speak(text)
+		}
+		fmt.Fprint(w, "Konuşma başlatıldı")
+	})
+
+	mux.HandleFunc("/shutdown", func(w http.ResponseWriter, r *http.Request) {
+		log.Println("Bilgisayar 3 saniye içinde kapatılıyor!")
+		fmt.Println("Bilgisayar 3 saniye içinde kapatılıyor!")
+		exec.Command("cmd", "/c", "shutdown /s /f /t 3").Start()
+		fmt.Fprint(w, "Bilgisayar kapatılıyor")
+	})
+
+	mux.HandleFunc("/shutdown-timer", func(w http.ResponseWriter, r *http.Request) {
+		minutes := r.URL.Query().Get("minutes")
+		if minutes == "" {
+			http.Error(w, "Süre (minutes) gerekli", http.StatusBadRequest)
+			return
+		}
+
+		var m int
+		fmt.Sscanf(minutes, "%d", &m)
+		seconds := m * 60
+
+		log.Printf("Bilgisayar %d dakika sonra kapatılacak şekilde ayarlandı\n", m)
+		fmt.Printf("Bilgisayar %d dakika sonra kapatılacak şekilde ayarlandı\n", m)
+
+		cmdStr := fmt.Sprintf("shutdown /s /f /t %d", seconds)
+		exec.Command("cmd", "/c", cmdStr).Start()
+		fmt.Fprintf(w, "%d dakika sonra kapatılacak", m)
+	})
+
+	mux.HandleFunc("/shutdown-abort", func(w http.ResponseWriter, r *http.Request) {
+		log.Println("Kapatma zamanlayıcısı iptal edildi")
+		fmt.Println("Kapatma zamanlayıcısı iptal edildi")
+		exec.Command("cmd", "/c", "shutdown /a").Start()
+		fmt.Fprint(w, "Kapatma iptal edildi")
 	})
 
 	mux.HandleFunc("/type-text", func(w http.ResponseWriter, r *http.Request) {
@@ -967,6 +1065,79 @@ func main() {
 		fmt.Fprint(w, "OK")
 	})
 
+	mux.HandleFunc("/drives", func(w http.ResponseWriter, r *http.Request) {
+		var drives []string
+		for _, drive := range "ABCDEFGHIJKLMNOPQRSTUVWXYZ" {
+			d := string(drive) + ":\\"
+			_, err := os.Stat(d)
+			if err == nil {
+				drives = append(drives, d)
+			}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(drives)
+	})
+
+	mux.HandleFunc("/list-dir", func(w http.ResponseWriter, r *http.Request) {
+		dirPath := r.URL.Query().Get("path")
+		if dirPath == "" {
+			http.Error(w, "Path is required", http.StatusBadRequest)
+			return
+		}
+
+		entries, err := os.ReadDir(dirPath)
+		if err != nil {
+			http.Error(w, "Cannot read directory: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		type FileInfo struct {
+			Name    string `json:"name"`
+			IsDir   bool   `json:"isDir"`
+			Size    int64  `json:"size"`
+			ModTime string `json:"modTime"`
+		}
+
+		var files []FileInfo
+		count := 0
+		for _, entry := range entries {
+			if count >= 500 { // Limit list to 500 items to prevent performance issues
+				break
+			}
+			info, err := entry.Info()
+			var size int64
+			var modTime string
+			if err == nil {
+				size = info.Size()
+				modTime = info.ModTime().Format(time.RFC3339)
+			}
+			files = append(files, FileInfo{
+				Name:    entry.Name(),
+				IsDir:   entry.IsDir(),
+				Size:    size,
+				ModTime: modTime,
+			})
+			count++
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(files)
+	})
+
+	mux.HandleFunc("/delete-file", func(w http.ResponseWriter, r *http.Request) {
+		targetPath := r.URL.Query().Get("path")
+		if targetPath == "" {
+			http.Error(w, "Path is required", http.StatusBadRequest)
+			return
+		}
+		err := os.RemoveAll(targetPath)
+		if err != nil {
+			http.Error(w, "Cannot delete file: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		fmt.Fprint(w, "Deleted")
+	})
+
 	go func() {
 		for {
 			time.Sleep(5 * time.Second)
@@ -982,11 +1153,19 @@ func main() {
 		localIP = localAddr.IP.String()
 	}
 
-	fmt.Printf("Remote Deck Sunucusu Başlatıldı\n")
+	asciiArt := `
+██████╗  ██████╗     ██████╗ ██████╗ ███╗   ██╗████████╗██████╗  ██████╗ ██╗     
+██╔══██╗██╔════╝    ██╔════╝██╔═══██╗████╗  ██║╚══██╔══╝██╔══██╗██╔═══██╗██║     
+██████╔╝██║         ██║     ██║   ██║██╔██╗ ██║   ██║   ██████╔╝██║   ██║██║     
+██╔═══╝ ██║         ██║     ██║   ██║██║╚██╗██║   ██║   ██╔══██╗██║   ██║██║     
+██║     ╚██████╗    ╚██████╗╚██████╔╝██║ ╚████║   ██║   ██║  ██║╚██████╔╝███████╗
+╚═╝      ╚═════╝     ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝ ╚══════╝                                                                                                                                                                                                  
+`
+	fmt.Println(asciiArt)
+	fmt.Printf("Pc Control Sunucusu Başlatıldı\n")
 	fmt.Printf("Dinlenen Port: %s\n", port)
 	fmt.Printf("IP Adresi: %s\n", localIP)
 
-	// QR Code Oluştur
 	qrConfig := qrterminal.Config{
 		Level:     qrterminal.L,
 		Writer:    os.Stdout,
@@ -999,7 +1178,6 @@ func main() {
 
 	fmt.Println("Telefonunuzdan Pckontrol uygulamasını açın ve QR kodu okutun.")
 
-	// Sunucuyu CORS desteğiyle başlat
 	err = http.ListenAndServe("0.0.0.0:"+port, enableCORS(mux))
 	if err != nil {
 		log.Fatal("Sunucu başlatılamadı: ", err)

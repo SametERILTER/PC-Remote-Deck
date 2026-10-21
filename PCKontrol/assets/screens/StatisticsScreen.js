@@ -1,16 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, Platform } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import * as NavigationBar from 'expo-navigation-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LineChart } from 'react-native-chart-kit';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 const StatCard = ({ title, value, subtitle, icon, color, unit }) => {
     return (
         <View style={styles.card}>
-            <FontAwesome5 name={icon} size={80} color={color} style={styles.cardBgIcon} />
             <View style={styles.cardHeader}>
-                <FontAwesome5 name={icon} size={18} color={color} />
+                <View style={[styles.cardIconBox, { backgroundColor: '#27282F' }]}>
+                    <FontAwesome5 name={icon} size={15} color={color} />
+                </View>
                 <Text style={styles.cardTitle}>{title}</Text>
             </View>
             <View style={styles.cardBody}>
@@ -24,11 +29,22 @@ const StatCard = ({ title, value, subtitle, icon, color, unit }) => {
 };
 
 const StatisticsScreen = ({ navigation }) => {
+    const { t } = useTranslation();
     const [stats, setStats] = useState({ 
         cpu: '0', ram: '0', gpuTemp: '0', gpuUse: '0',
-        cpuName: 'Yükleniyor...', ramTot: '0', ramUse: '0', gpuName: 'Yükleniyor...'
+        cpuName: t('statistics.loading'), ramTot: '0', ramUse: '0', gpuName: t('statistics.loading')
     });
     const [baseUrl, setBaseUrl] = useState('');
+    const [isListView, setIsListView] = useState(false);
+    const [selectedMetric, setSelectedMetric] = useState('cpu');
+    const [chartWidth, setChartWidth] = useState(0);
+    const insets = useSafeAreaInsets();
+    const [history, setHistory] = useState({
+        cpu: [0],
+        ram: [0],
+        gpuTemp: [0],
+        gpuUse: [0]
+    });
 
     useEffect(() => {
         const loadSettings = async () => {
@@ -47,91 +63,227 @@ const StatisticsScreen = ({ navigation }) => {
         };
         loadSettings();
 
-        // Yan (landscape) mod
-        ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+        const enableImmersive = async () => {
+            try {
+                await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+            } catch (e) {}
+            if (Platform.OS === 'android' && NavigationBar?.setVisibilityAsync) {
+                try {
+                    await NavigationBar.setVisibilityAsync('hidden');
+                } catch (e) {}
+            }
+        };
+        enableImmersive();
 
         return () => {
-            // Çıkarken dikey (portrait) yap
-            ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+            try {
+                ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+            } catch (e) {}
+            if (Platform.OS === 'android' && NavigationBar?.setVisibilityAsync) {
+                try {
+                    NavigationBar.setVisibilityAsync('visible');
+                } catch (e) {}
+            }
         };
     }, []);
 
     useEffect(() => {
         if (!baseUrl) return;
 
+        let isMounted = true;
         const fetchStats = async () => {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 2500);
             try {
-                const response = await fetch(`${baseUrl}/stats`);
-                if (response.ok) {
+                const response = await fetch(`${baseUrl}/stats`, { signal: controller.signal });
+                clearTimeout(timeoutId);
+                if (response.ok && isMounted) {
                     const data = await response.json();
                     setStats(data);
+                    
+                    setHistory(prev => {
+                        const newHistory = { ...prev };
+                        newHistory.cpu = [...prev.cpu.slice(-20), parseFloat(data.cpu) || 0];
+                        newHistory.ram = [...prev.ram.slice(-20), parseFloat(data.ram) || 0];
+                        newHistory.gpuTemp = [...prev.gpuTemp.slice(-20), parseFloat(data.gpuTemp) || 0];
+                        newHistory.gpuUse = [...prev.gpuUse.slice(-20), parseFloat(data.gpuUse) || 0];
+                        return newHistory;
+                    });
                 }
             } catch (error) {
-                console.log('Stats fetch error:', error);
+                clearTimeout(timeoutId);
+                // Host unreachable or timeout - fail silently without spamming console
             }
         };
 
         fetchStats();
         const interval = setInterval(fetchStats, 2000);
-        return () => clearInterval(interval);
+        return () => {
+            isMounted = false;
+            clearInterval(interval);
+        };
     }, [baseUrl]);
+
+    const renderListView = () => {
+        const metrics = [
+            { id: 'cpu', title: 'CPU', icon: 'microchip', color: '#60A5FA', current: stats.cpu, unit: '%' },
+            { id: 'ram', title: 'RAM', icon: 'memory', color: '#A78BFA', current: stats.ram, unit: '%' },
+            { id: 'gpuUse', title: t('statistics.gpu_usage'), icon: 'video', color: '#34D399', current: stats.gpuUse, unit: '%' },
+            { id: 'gpuTemp', title: t('statistics.gpu_temp'), icon: 'thermometer-half', color: '#F87171', current: stats.gpuTemp, unit: '°C' },
+        ];
+
+        const selectedData = metrics.find(m => m.id === selectedMetric);
+        const chartData = history[selectedMetric].length > 0 ? history[selectedMetric] : [0];
+
+        return (
+            <View style={[styles.listLayout, { 
+                paddingLeft: Math.max(insets.left, 20), 
+                paddingRight: Math.max(insets.right, 20),
+                paddingBottom: Math.max(insets.bottom, 14),
+            }]}>
+                <ScrollView 
+                    style={styles.listMenu}
+                    contentContainerStyle={{ flexGrow: 1, justifyContent: 'space-between' }}
+                    showsVerticalScrollIndicator={false}
+                >
+                    {metrics.map(metric => (
+                        <TouchableOpacity 
+                            key={metric.id}
+                            style={[
+                                styles.menuItem,
+                                selectedMetric === metric.id && styles.menuItemActive
+                            ]}
+                            onPress={() => setSelectedMetric(metric.id)}
+                            activeOpacity={0.7}
+                        >
+                            <FontAwesome5 name={metric.icon} size={20} color={selectedMetric === metric.id ? metric.color : '#717684'} />
+                            <Text numberOfLines={1} style={[styles.menuItemTitle, selectedMetric === metric.id && { color: '#FFFFFF' }, { marginTop: 6, textAlign: 'center' }]}>
+                                {metric.title}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+
+                <View style={styles.chartContainer} onLayout={(e) => setChartWidth(e.nativeEvent.layout.width - 36)}>
+                    <View style={styles.chartHeader}>
+                        <View style={[styles.cardIconBox, { backgroundColor: '#27282F', marginRight: 10 }]}>
+                            <FontAwesome5 name={selectedData.icon} size={15} color={selectedData.color} />
+                        </View>
+                        <Text style={styles.chartTitle}>{selectedData.title} {t('statistics.history')}</Text>
+                        <Text style={styles.chartCurrentValue}>{selectedData.current}{selectedData.unit}</Text>
+                    </View>
+                    {chartWidth > 0 && (
+                        <LineChart
+                            data={{
+                                labels: [],
+                                datasets: [{ data: chartData }]
+                            }}
+                            width={chartWidth}
+                            height={190}
+                            yAxisSuffix={selectedData.unit}
+                            withVerticalLabels={false}
+                            chartConfig={{
+                                backgroundColor: '#1E1F24',
+                                backgroundGradientFrom: '#1E1F24',
+                                backgroundGradientTo: '#1E1F24',
+                                decimalPlaces: 0,
+                                color: (opacity = 1) => selectedData.color,
+                                labelColor: (opacity = 1) => `rgba(160, 165, 175, ${opacity})`,
+                                propsForDots: {
+                                    r: "3",
+                                    strokeWidth: "1",
+                                    stroke: selectedData.color
+                                }
+                            }}
+                            bezier
+                            style={{
+                                marginVertical: 6,
+                                borderRadius: 16
+                            }}
+                        />
+                    )}
+                </View>
+            </View>
+        );
+    };
 
     return (
         <View style={styles.container}>
             <StatusBar style="light" hidden={true} />
             
             {/* Header */}
-            <View style={styles.header}>
+            <View style={[styles.header, { 
+                paddingLeft: Math.max(insets.left, 20), 
+                paddingRight: Math.max(insets.right, 20),
+                paddingTop: Math.max(insets.top, 14),
+            }]}>
                 <TouchableOpacity 
-                    style={styles.backButton} 
+                    style={styles.backButton}  
                     onPress={() => navigation.goBack()}
+                    activeOpacity={0.7}
                 >
-                    <FontAwesome5 name="arrow-left" size={24} color="#E1E1E1" />
+                    <FontAwesome5 name="chevron-left" size={15} color="#E2E8F0" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>İstatistikler</Text>
+                <Text style={styles.headerTitle}>{t('statistics.title')}</Text>
+                
+                <View style={{ flex: 1 }} />
+                
+                <TouchableOpacity 
+                    style={styles.viewToggleBtn}
+                    onPress={() => setIsListView(!isListView)}
+                    activeOpacity={0.7}
+                >
+                    <FontAwesome5 name={isListView ? "th-large" : "chart-line"} size={16} color="#FFFFFF" />
+                </TouchableOpacity>
             </View>
 
-            {/* Kart Tablosu (2x2 Grid) */}
-            <ScrollView 
-                style={styles.listWrapper} 
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
-            >
-                <View style={styles.gridContainer}>
-                    <StatCard 
-                        title="CPU" 
-                        value={stats.cpu} 
-                        unit="%"
-                        subtitle={stats.cpuName}
-                        icon="microchip" 
-                        color="#00E5FF" 
-                    />
-                    <StatCard 
-                        title="RAM" 
-                        value={stats.ram} 
-                        unit="%"
-                        subtitle={`${stats.ramUse} GB / ${stats.ramTot} GB Kullanılıyor`}
-                        icon="memory" 
-                        color="#B388FF" 
-                    />
-                    <StatCard 
-                        title="GPU" 
-                        value={stats.gpuUse} 
-                        unit="%"
-                        subtitle={stats.gpuName}
-                        icon="video" 
-                        color="#00E676" 
-                    />
-                    <StatCard 
-                        title="Sıcaklık" 
-                        value={stats.gpuTemp} 
-                        unit="°C"
-                        subtitle={stats.gpuName !== "GPU" ? stats.gpuName + " Sıcaklığı" : "GPU Sıcaklığı"}
-                        icon="thermometer-half" 
-                        color="#FF5252" 
-                    />
-                </View>
-            </ScrollView>
+            {/* İçerik Alanı */}
+            {isListView ? renderListView() : (
+                <ScrollView 
+                    style={styles.listWrapper} 
+                    contentContainerStyle={[styles.scrollContent, { 
+                        paddingLeft: Math.max(insets.left, 20), 
+                        paddingRight: Math.max(insets.right, 20),
+                        paddingBottom: Math.max(insets.bottom, 16) + 10,
+                    }]}
+                    showsVerticalScrollIndicator={false}
+                >
+                    <View style={styles.gridContainer}>
+                        <StatCard 
+                            title="CPU" 
+                            value={stats.cpu} 
+                            unit="%"
+                            subtitle={stats.cpuName}
+                            icon="microchip" 
+                            color="#60A5FA" 
+                        />
+                        <StatCard 
+                            title="RAM" 
+                            value={stats.ram} 
+                            unit="%"
+                            subtitle={`${stats.ramUse} GB / ${stats.ramTot} GB ${t('statistics.used')}`}
+                            icon="memory" 
+                            color="#A78BFA" 
+                        />
+                        <StatCard 
+                            title="GPU" 
+                            value={stats.gpuUse} 
+                            unit="%"
+                            subtitle={stats.gpuName}
+                            icon="video" 
+                            color="#34D399" 
+                        />
+                        <StatCard 
+                            title={t('statistics.temp')} 
+                            value={stats.gpuTemp} 
+                            unit="°C"
+                            subtitle={stats.gpuName !== "GPU" ? stats.gpuName + " " + t('statistics.temp_of') : "GPU " + t('statistics.temp_of')}
+                            icon="thermometer-half" 
+                            color="#F87171" 
+                        />
+                    </View>
+                </ScrollView>
+            )}
         </View>
     );
 };
@@ -139,87 +291,151 @@ const StatisticsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#0e0e0e',
+        backgroundColor: '#080808',
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingTop: 15,
-        marginBottom: 5,
+        paddingBottom: 12,
+        backgroundColor: '#080808',
     },
     backButton: {
-        padding: 5,
-        marginRight: 15,
+        width: 38,
+        height: 38,
+        borderRadius: 12,
+        backgroundColor: '#1E1F24',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 14,
     },
     headerTitle: {
-        color: '#E1E1E1',
-        fontSize: 22,
-        fontFamily: 'SpaceGrotesk_700Bold',
+        color: '#FFFFFF',
+        fontSize: 18,
+        fontFamily: 'PlusJakartaSans_700Bold',
+        letterSpacing: -0.3,
     },
     listWrapper: {
         flex: 1,
     },
     scrollContent: {
-        paddingHorizontal: 20,
-        paddingBottom: 20,
+        paddingTop: 6,
         alignItems: 'center',
     },
     gridContainer: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         justifyContent: 'center',
-        gap: 15,
+        gap: 14,
         width: '100%',
         maxWidth: 800,
     },
     card: {
-        width: '46%',
+        width: '47%',
         minWidth: 200,
-        height: 140, 
-        backgroundColor: '#1a1a1a',
-        borderRadius: 24,
-        padding: 20,
+        backgroundColor: '#1E1F24',
+        borderRadius: 20,
+        padding: 16,
         justifyContent: 'space-between',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.03)',
-        overflow: 'hidden',
-    },
-    cardBgIcon: {
-        position: 'absolute',
-        right: -15,
-        bottom: -15,
-        opacity: 0.06,
-        transform: [{ rotate: '15deg' }],
+        minHeight: 135,
     },
     cardHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: 10,
+        marginBottom: 8,
+    },
+    cardIconBox: {
+        width: 32,
+        height: 32,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     cardTitle: {
-        color: '#A0A0A0',
-        fontSize: 14,
-        fontFamily: 'SpaceGrotesk_600SemiBold',
+        color: '#717684',
+        fontSize: 12,
+        fontFamily: 'PlusJakartaSans_600SemiBold',
+        textTransform: 'uppercase',
+        letterSpacing: 0.8,
     },
     cardBody: {
         alignItems: 'flex-start',
     },
     statValue: {
         color: '#FFFFFF',
-        fontSize: 34,
-        fontFamily: 'SpaceGrotesk_700Bold',
+        fontSize: 30,
+        fontFamily: 'PlusJakartaSans_800ExtraBold',
+        letterSpacing: -0.5,
     },
     statUnit: {
-        fontSize: 16,
-        color: '#A0A0A0',
-        fontFamily: 'SpaceGrotesk_600SemiBold',
+        fontSize: 15,
+        color: '#717684',
+        fontFamily: 'PlusJakartaSans_600SemiBold',
     },
     cardSubtitle: {
-        color: '#888888',
+        color: '#9CA0AC',
+        fontSize: 11.5,
+        marginTop: 4,
+        fontFamily: 'PlusJakartaSans_400Regular',
+        lineHeight: 15,
+    },
+    viewToggleBtn: {
+        width: 38,
+        height: 38,
+        borderRadius: 12,
+        backgroundColor: '#1E1F24',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    listLayout: {
+        flex: 1,
+        flexDirection: 'row',
+        paddingTop: 6,
+        gap: 14,
+    },
+    listMenu: {
+        flex: 1,
+    },
+    menuItem: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#1E1F24',
+        paddingVertical: 14,
+        paddingHorizontal: 8,
+        borderRadius: 14,
+        marginBottom: 10,
+    },
+    menuItemActive: {
+        backgroundColor: '#27282F',
+    },
+    menuItemTitle: {
+        color: '#717684',
         fontSize: 11,
-        marginTop: 2,
-        fontFamily: 'SpaceGrotesk_400Regular',
+        fontFamily: 'PlusJakartaSans_600SemiBold',
+    },
+    chartContainer: {
+        flex: 5,
+        backgroundColor: '#1E1F24',
+        borderRadius: 20,
+        padding: 18,
+    },
+    chartHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    chartTitle: {
+        color: '#717684',
+        fontSize: 13,
+        fontFamily: 'PlusJakartaSans_600SemiBold',
+        flex: 1,
+        textTransform: 'uppercase',
+        letterSpacing: 0.8,
+    },
+    chartCurrentValue: {
+        color: '#FFFFFF',
+        fontSize: 24,
+        fontFamily: 'PlusJakartaSans_800ExtraBold',
     }
 });
 

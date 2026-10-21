@@ -5,33 +5,35 @@ import {
     StyleSheet,
     TouchableOpacity,
     Image,
-    ActivityIndicator,
     Alert,
-    SafeAreaView,
     Animated,
     Dimensions,
+    Easing,
+    ActivityIndicator,
+    ScrollView
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
+import * as DocumentPicker from 'expo-document-picker';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const FileTransferScreen = ({ navigation }) => {
-    const [image, setImage] = useState(null);
+    const insets = useSafeAreaInsets();
+    const { t } = useTranslation();
+    const [files, setFiles] = useState([]);
     const [uploading, setUploading] = useState(false);
     const [baseUrl, setBaseUrl] = useState('');
 
-    // Animasyon değerleri
-    const translateY = useRef(new Animated.Value(0)).current;
-    const rotate = useRef(new Animated.Value(0)).current;
-    const progress = useRef(new Animated.Value(0)).current;
-    const scale = useRef(new Animated.Value(1)).current;
-    const opacity = useRef(new Animated.Value(1)).current;
+    const cardScale = useRef(new Animated.Value(1)).current;
+    const cardTranslateY = useRef(new Animated.Value(0)).current;
     const successOpacity = useRef(new Animated.Value(0)).current;
-    
-    const [statusText, setStatusText] = useState('Gönderilmeye Hazır');
+    const progress = useRef(new Animated.Value(0)).current;
+
+    const [statusText, setStatusText] = useState(t('file_transfer.ready'));
     const [isSuccess, setIsSuccess] = useState(false);
 
     useEffect(() => {
@@ -50,400 +52,499 @@ const FileTransferScreen = ({ navigation }) => {
         }
     };
 
-    const pickImage = async () => {
-        // İzin iste
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') {
-            Alert.alert('İzin Gerekli', 'Galeriye erişim izni vermeniz gerekiyor.');
-            return;
-        }
+    const pickFile = async () => {
+        try {
+            const result = await DocumentPicker.getDocumentAsync({
+                type: '*/*', 
+                copyToCacheDirectory: true,
+                multiple: true,
+            });
 
-        let result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: false,
-            quality: 1,
-        });
-
-        if (!result.canceled) {
-            // Yeni resim seçildiğinde animasyon değerlerini sıfırla
-            translateY.setValue(0);
-            opacity.setValue(1);
-            setImage(result.assets[0]);
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+                resetAnimations();
+                setIsSuccess(false);
+                setFiles(result.assets);
+            }
+        } catch (error) {
+            console.error("Dosya seçme hatası", error);
+            Alert.alert(t('deck.error'), t('file_transfer.select_err'));
         }
     };
 
+    const removeFile = (indexToRemove) => {
+        const newFiles = files.filter((_, index) => index !== indexToRemove);
+        setFiles(newFiles);
+    };
+
     const uploadFile = async () => {
-        if (!image || uploading) return;
+        if (files.length === 0 || uploading) return;
         if (!baseUrl) {
-            Alert.alert('Hata', 'Bilgisayar bağlantısı ayarlanmamış.');
+            Alert.alert(t('deck.error'), t('file_transfer.no_conn'));
             return;
         }
 
         setUploading(true);
-        setStatusText('Gönderiliyor...');
+        setStatusText(t('file_transfer.sending', { current: 0, total: files.length }));
         setIsSuccess(false);
 
-        // 1. FIRLATMA ANIMASYONU
-        Animated.parallel([
-            Animated.timing(translateY, { toValue: -SCREEN_HEIGHT, duration: 800, useNativeDriver: true }),
-            Animated.timing(scale, { toValue: 0.1, duration: 800, useNativeDriver: true }),
-            Animated.timing(rotate, { toValue: 1, duration: 800, useNativeDriver: true }),
-            Animated.timing(opacity, { toValue: 0, duration: 600, useNativeDriver: true }),
-            Animated.timing(progress, { toValue: 1, duration: 2500, useNativeDriver: false }), // Progress için native driver kapalı
-        ]).start();
+        Animated.timing(cardScale, {
+            toValue: 1.25,
+            duration: 8000,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+        }).start();
 
+        let successCount = 0;
         try {
-            const formData = new FormData();
-            const uriParts = image.uri.split('/');
-            const fileName = uriParts[uriParts.length - 1];
-
-            formData.append('file', {
-                uri: image.uri,
-                name: fileName,
-                type: 'image/jpeg',
-            });
-
-            const response = await fetch(`${baseUrl}/upload`, {
-                method: 'POST',
-                body: formData,
-            });
-
-            if (response.ok) {
-                setStatusText('Tamamlandı!');
-                progress.setValue(1);
+            for (let i = 0; i < files.length; i++) {
+                const currentFile = files[i];
+                setStatusText(t('file_transfer.sending', { current: i + 1, total: files.length }));
                 
+                Animated.timing(progress, { 
+                    toValue: (i + 1) / files.length, 
+                    duration: 300, 
+                    useNativeDriver: false 
+                }).start();
+
+                const formData = new FormData();
+                const uriParts = currentFile.uri.split('/');
+                const fileName = currentFile.name || uriParts[uriParts.length - 1];
+
+                formData.append('file', {
+                    uri: currentFile.uri,
+                    name: fileName,
+                    type: currentFile.mimeType || 'application/octet-stream',
+                });
+
+                const response = await fetch(`${baseUrl}/upload`, {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (response.ok) {
+                    successCount++;
+                } else {
+                    throw new Error(t('file_transfer.upload_err', { name: fileName }));
+                }
+            }
+
+            if (successCount === files.length) {
+                setStatusText(t('file_transfer.completed'));
                 setTimeout(() => {
-                    setIsSuccess(true);
-                    Animated.timing(successOpacity, {
-                        toValue: 1,
+                    cardScale.stopAnimation();
+                    
+                    Animated.timing(cardTranslateY, {
+                        toValue: -SCREEN_HEIGHT,
                         duration: 500,
+                        easing: Easing.in(Easing.back(1.5)),
                         useNativeDriver: true,
-                    }).start();
-                }, 500);
-            } else {
-                throw new Error('Yükleme başarısız');
+                    }).start(() => {
+                        setIsSuccess(true);
+                        Animated.timing(successOpacity, {
+                            toValue: 1,
+                            duration: 500,
+                            easing: Easing.out(Easing.exp),
+                            useNativeDriver: true,
+                        }).start();
+                    });
+                }, 350);
             }
         } catch (error) {
             console.error(error);
             resetAnimations();
-            Alert.alert('Hata', 'Dosya gönderilemedi. Bağlantıyı kontrol edin.');
+            Alert.alert(t('deck.error'), t('file_transfer.transfer_err'));
             setUploading(false);
         }
     };
 
     const resetAnimations = () => {
-        translateY.setValue(0);
-        scale.setValue(1);
-        rotate.setValue(0);
-        opacity.setValue(1);
+        cardScale.setValue(1);
+        cardTranslateY.setValue(0);
         progress.setValue(0);
         successOpacity.setValue(0);
     };
 
     const resetScreen = () => {
-        setImage(null);
+        setFiles([]);
         setIsSuccess(false);
         setUploading(false);
-        setStatusText('Gönderilmeye Hazır');
+        setStatusText(t('file_transfer.ready'));
         resetAnimations();
     };
 
+    const previewFiles = files.slice(0, 3);
+
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
             <StatusBar style="light" />
 
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <FontAwesome5 name="chevron-left" size={20} color="#E1E1E1" />
+            {/* Üst Başlık */}
+            <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) + 20, paddingBottom: 16 }]}>
+                <TouchableOpacity 
+                    onPress={() => navigation.goBack()} 
+                    style={styles.backButton}
+                    activeOpacity={0.7}
+                >
+                    <FontAwesome5 name="chevron-left" size={15} color="#E2E8F0" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>DOSYA GÖNDER</Text>
+                <Text style={styles.headerTitle}>{t('file_transfer.title')}</Text>
+                <View style={{ width: 38 }} />
             </View>
 
             <View style={styles.content}>
-                <View style={styles.uploadCard}>
+                <View style={styles.mainArea}>
                     {isSuccess ? (
                         <Animated.View style={[styles.successBox, { opacity: successOpacity }]}>
                             <View style={styles.successCircle}>
-                                <FontAwesome5 name="check" size={40} color="#00E5FF" />
+                                <FontAwesome5 name="check" size={40} color="#22C55E" />
                             </View>
-                            <Text style={styles.successText}>BAŞARIYLA AKTARILDI</Text>
-                            <TouchableOpacity style={styles.resetButton} onPress={resetScreen}>
-                                <Text style={styles.resetButtonText}>Tamam</Text>
-                            </TouchableOpacity>
+                            <Text style={styles.successText}>{t('file_transfer.sent')}</Text>
+                            <Text style={styles.successSub}>{t('file_transfer.sent_desc', { count: files.length })}</Text>
                         </Animated.View>
                     ) : (
                         <>
-                            <FontAwesome5 name="file-upload" size={120} color="#00E5FF" style={styles.cardBgIcon} />
-                            <FontAwesome5 name="cloud-upload-alt" size={60} color="#00E5FF" style={styles.bigIcon} />
-                            <Text style={styles.title}>{uploading ? 'GÖNDERİLİYOR' : 'Dosya Seçin'}</Text>
-                            <Text style={styles.subtitle}>
-                                {uploading ? 'Görsel bilgisayarınıza aktarılıyor.' : 'İstediğiniz resmi seçerek doğrudan bilgisayarınıza aktarın.'}
-                            </Text>
-
-                            {!uploading && (
-                                <TouchableOpacity
-                                    style={styles.selectButton}
-                                    onPress={pickImage}
-                                    activeOpacity={0.8}
-                                >
-                                    <FontAwesome5 name="images" size={20} color="#00E5FF" style={{ marginRight: 10 }} />
-                                    <Text style={styles.buttonText}>Galeriden Seç</Text>
-                                </TouchableOpacity>
-                            )}
-
-                            {image && (
-                                <Animated.View style={[
-                                    styles.previewContainer,
-                                    {
-                                        opacity: opacity,
-                                        transform: [
-                                            { translateY: translateY },
-                                            { scale: scale },
-                                            { rotate: rotate.interpolate({
-                                                inputRange: [0, 1],
-                                                outputRange: ['0deg', '45deg']
-                                            })}
-                                        ]
-                                    }
-                                ]}>
-                                    <Image source={{ uri: image.uri }} style={styles.previewImage} />
-                                    
-                                    <View style={{ flex: 1, marginLeft: 15 }}>
-                                        <Text style={styles.fileName} numberOfLines={1}>
-                                            {image.uri.split('/').pop()}
-                                        </Text>
-                                        <Text style={{ color: '#00E5FF', fontSize: 10, fontFamily: 'SpaceGrotesk_700Bold' }}>{statusText}</Text>
+                            {files.length === 0 ? (
+                                <View style={styles.emptyState}>
+                                    <View style={styles.emptyIconBox}>
+                                        <FontAwesome5 name="folder-open" size={36} color="#717684" />
                                     </View>
-                                    
-                                    {!uploading && (
-                                        <TouchableOpacity onPress={() => setImage(null)} style={styles.removeButton}>
-                                            <FontAwesome5 name="times-circle" size={24} color="#E74C3C" />
-                                        </TouchableOpacity>
-                                    )}
-                                </Animated.View>
-                            )}
-
-                            {uploading && (
-                                <View style={styles.progressWrapper}>
-                                    <View style={styles.progressTrack}>
-                                        <Animated.View style={[
-                                            styles.progressBar,
-                                            {
-                                                width: progress.interpolate({
-                                                    inputRange: [0, 1],
-                                                    outputRange: ['0%', '100%']
-                                                })
-                                            }
-                                        ]} />
-                                    </View>
+                                    <Text style={styles.emptyTitle}>{t('file_transfer.empty_title')}</Text>
+                                    <Text style={styles.emptySubtitle}>{t('file_transfer.empty_desc')}</Text>
                                 </View>
-                            )}
+                            ) : (
+                                <View style={styles.fileState}>
+                                    <Animated.View style={[
+                                        styles.bigCardContainer,
+                                        {
+                                            transform: [
+                                                { scale: cardScale },
+                                                { translateY: cardTranslateY }
+                                            ]
+                                        }
+                                    ]}>
+                                        {previewFiles.slice().reverse().map((fileItem, i) => {
+                                            const actualIndex = previewFiles.length - 1 - i;
+                                            const isImage = fileItem.mimeType && fileItem.mimeType.startsWith('image/');
+                                            
+                                            const rotateVal = `${actualIndex * 8}deg`;
+                                            const translateXVal = actualIndex * 30;
+                                            const translateYVal = -actualIndex * 20;
+                                            const opacityVal = 1 - (actualIndex * 0.25);
+                                            
+                                            return (
+                                                <View 
+                                                    key={i}
+                                                    style={[
+                                                        styles.bigCardInner,
+                                                        {
+                                                            position: 'absolute',
+                                                            transform: [
+                                                                { rotate: rotateVal },
+                                                                { translateX: translateXVal },
+                                                                { translateY: translateYVal }
+                                                            ],
+                                                            opacity: opacityVal,
+                                                            zIndex: 10 - actualIndex,
+                                                        }
+                                                    ]}
+                                                >
+                                                    {isImage ? (
+                                                        <Image source={{ uri: fileItem.uri }} style={styles.bigImagePreview} />
+                                                    ) : (
+                                                        <FontAwesome5 name="file-alt" size={120} color="#E2E8F0" />
+                                                    )}
+                                                </View>
+                                            );
+                                        })}
+                                    </Animated.View>
 
-                            {image && !uploading && (
-                                <TouchableOpacity
-                                    style={styles.uploadButton}
-                                    onPress={uploadFile}
-                                    activeOpacity={0.8}
-                                >
-                                    <FontAwesome5 name="paper-plane" size={20} color="white" style={{ marginRight: 10 }} />
-                                    <Text style={styles.buttonText}>Gönder</Text>
-                                </TouchableOpacity>
+                                    {!uploading && (
+                                        <View style={styles.listSection}>
+                                            <Text style={styles.listTitle}>{t('file_transfer.files_to_send', { count: files.length })}</Text>
+                                            <ScrollView style={styles.listScrollView} showsVerticalScrollIndicator={false}>
+                                                {files.map((fileItem, index) => (
+                                                    <View key={index} style={styles.listItem}>
+                                                        <FontAwesome5 name="file" size={14} color="#717684" style={{ marginRight: 12 }} />
+                                                        <Text style={styles.listItemName} numberOfLines={1}>
+                                                            {fileItem.name || fileItem.uri.split('/').pop()}
+                                                        </Text>
+                                                        <TouchableOpacity onPress={() => removeFile(index)} style={styles.removeBtn} activeOpacity={0.7}>
+                                                            <FontAwesome5 name="times" size={13} color="#EF4444" />
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                ))}
+                                            </ScrollView>
+                                        </View>
+                                    )}
+
+                                    {uploading && (
+                                        <View style={styles.progressContainer}>
+                                            <Text style={styles.progressText}>{statusText}</Text>
+                                            <View style={styles.progressTrack}>
+                                                <Animated.View style={[
+                                                    styles.progressBar,
+                                                    {
+                                                        width: progress.interpolate({
+                                                            inputRange: [0, 1],
+                                                            outputRange: ['0%', '100%']
+                                                        })
+                                                    }
+                                                ]} />
+                                            </View>
+                                        </View>
+                                    )}
+                                </View>
                             )}
                         </>
                     )}
                 </View>
 
-                <View style={styles.infoBox}>
-                    <FontAwesome5 name="info-circle" size={16} color="#666" style={{ marginRight: 10 }} />
-                    <Text style={styles.infoText}>
-                        Resimler doğrudan Masaüstüne kaydedilir.
-                    </Text>
+                {/* Alt Aksiyon Butonu */}
+                <View style={[
+                    styles.bottomArea, 
+                    { paddingBottom: Math.max(insets.bottom, 16) + 16 }
+                ]}>
+                    {isSuccess ? (
+                        <TouchableOpacity style={styles.actionButton} onPress={resetScreen} activeOpacity={0.8}>
+                            <FontAwesome5 name="plus" size={15} color="#080808" style={{ marginRight: 10 }} />
+                            <Text style={styles.actionButtonText}>{t('file_transfer.send_new')}</Text>
+                        </TouchableOpacity>
+                    ) : (
+                        <>
+                            {files.length === 0 ? (
+                                <TouchableOpacity style={styles.actionButtonSecondary} onPress={pickFile} activeOpacity={0.8}>
+                                    <FontAwesome5 name="folder-open" size={15} color="#FFFFFF" style={{ marginRight: 10 }} />
+                                    <Text style={styles.actionButtonTextSecondary}>{t('file_transfer.select')}</Text>
+                                </TouchableOpacity>
+                            ) : (
+                                <TouchableOpacity 
+                                    style={[styles.actionButton, uploading && styles.actionButtonDisabled]} 
+                                    onPress={uploadFile} 
+                                    disabled={uploading}
+                                    activeOpacity={0.8}
+                                >
+                                    {uploading ? (
+                                        <ActivityIndicator color="#080808" />
+                                    ) : (
+                                        <>
+                                            <FontAwesome5 name="paper-plane" size={15} color="#080808" style={{ marginRight: 10 }} />
+                                            <Text style={styles.actionButtonText}>{t('file_transfer.send')}</Text>
+                                        </>
+                                    )}
+                                </TouchableOpacity>
+                            )}
+                        </>
+                    )}
                 </View>
             </View>
-        </SafeAreaView>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#0e0e0e',
+        backgroundColor: '#080808',
     },
     header: {
-        paddingHorizontal: 24,
-        paddingTop: 60,
-        paddingBottom: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        backgroundColor: '#080808',
+        zIndex: 10,
     },
     backButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: '#1a1a1a',
+        width: 38,
+        height: 38,
+        borderRadius: 12,
+        backgroundColor: '#1E1F24',
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 20,
     },
     headerTitle: {
         color: '#FFFFFF',
-        fontFamily: 'SpaceGrotesk_700Bold',
-        fontSize: 32,
-        letterSpacing: 1,
+        fontFamily: 'PlusJakartaSans_700Bold',
+        fontSize: 18,
+        letterSpacing: -0.3,
     },
     content: {
         flex: 1,
-        padding: 20,
-        alignItems: 'center',
+        justifyContent: 'space-between',
     },
-    uploadCard: {
-        width: '100%',
-        backgroundColor: '#1a1a1a',
-        borderRadius: 32,
-        padding: 35,
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.03)',
-        overflow: 'hidden',
-    },
-    cardBgIcon: {
-        position: 'absolute',
-        right: -30,
-        bottom: -30,
-        opacity: 0.04,
-        transform: [{ rotate: '-10deg' }],
-    },
-    bigIcon: {
-        marginBottom: 20,
-    },
-    title: {
-        color: '#FFFFFF',
-        fontSize: 24,
-        fontFamily: 'SpaceGrotesk_700Bold',
-        marginBottom: 8,
-    },
-    subtitle: {
-        color: '#888',
-        fontSize: 14,
-        textAlign: 'center',
-        fontFamily: 'SpaceGrotesk_400Regular',
-        marginBottom: 35,
-    },
-    selectButton: {
-        width: '100%',
-        height: 60,
-        backgroundColor: '#252525',
-        borderRadius: 20,
-        flexDirection: 'row',
+    mainArea: {
+        flex: 1,
         justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    uploadButton: {
-        width: '100%',
-        height: 64,
-        backgroundColor: '#00E5FF',
-        borderRadius: 20,
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: 20,
-    },
-    disabledButton: {
-        backgroundColor: '#252525',
-        opacity: 0.5,
-    },
-    buttonText: {
-        color: 'white',
-        fontSize: 16,
-        fontFamily: 'SpaceGrotesk_700Bold',
-    },
-    previewContainer: {
-        width: '100%',
-        height: 100,
-        backgroundColor: '#222',
-        borderRadius: 20,
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 15,
-        marginVertical: 10,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
-    },
-    previewImage: {
-        width: 70,
-        height: 70,
-        borderRadius: 12,
-    },
-    fileName: {
-        color: '#FFFFFF',
-        fontSize: 14,
-        fontFamily: 'SpaceGrotesk_500Medium',
-    },
-    removeButton: {
-        padding: 10,
-    },
-    infoBox: {
-        flexDirection: 'row',
-        marginTop: 30,
         alignItems: 'center',
         paddingHorizontal: 20,
     },
-    infoText: {
-        color: '#666',
-        fontSize: 12,
-        fontFamily: 'SpaceGrotesk_400Regular',
-        textAlign: 'center',
+    emptyState: {
+        alignItems: 'center',
     },
-    progressWrapper: {
+    emptyIconBox: {
+        width: 80,
+        height: 80,
+        borderRadius: 24,
+        backgroundColor: '#1E1F24',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    emptyTitle: {
+        color: '#FFFFFF',
+        fontSize: 18,
+        fontFamily: 'PlusJakartaSans_700Bold',
+        marginBottom: 8,
+    },
+    emptySubtitle: {
+        color: '#717684',
+        fontSize: 13,
+        fontFamily: 'PlusJakartaSans_400Regular',
+        textAlign: 'center',
+        lineHeight: 18,
+        paddingHorizontal: 20,
+    },
+    fileState: {
+        width: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flex: 1,
+    },
+    bigCardContainer: {
+        width: 170,
+        height: 170,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 30,
+    },
+    bigCardInner: {
+        width: '100%',
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    bigImagePreview: {
+        width: '100%',
+        height: '100%',
+        resizeMode: 'cover',
+        borderRadius: 20,
+    },
+    listSection: {
+        width: '100%',
+        alignItems: 'flex-start',
+    },
+    listTitle: {
+        color: '#717684',
+        fontSize: 11,
+        fontFamily: 'PlusJakartaSans_700Bold',
+        marginBottom: 10,
+        letterSpacing: 1.1,
+        textTransform: 'uppercase',
+    },
+    listScrollView: {
+        maxHeight: 160,
+        width: '100%',
+    },
+    listItem: {
+        width: '100%',
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#1E1F24',
+        padding: 14,
+        borderRadius: 14,
+        marginBottom: 8,
+    },
+    listItemName: {
+        flex: 1,
+        color: '#FFFFFF',
+        fontSize: 13.5,
+        fontFamily: 'PlusJakartaSans_500Medium',
+    },
+    removeBtn: {
+        padding: 6,
+        marginLeft: 8,
+    },
+    progressContainer: {
         width: '100%',
         marginTop: 20,
+        alignItems: 'center',
+    },
+    progressText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontFamily: 'PlusJakartaSans_600SemiBold',
+        marginBottom: 10,
     },
     progressTrack: {
         width: '100%',
-        height: 8,
-        backgroundColor: '#1a1a1a',
-        borderRadius: 4,
+        height: 6,
+        backgroundColor: '#27282F',
+        borderRadius: 3,
         overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: '#333',
     },
     progressBar: {
         height: '100%',
-        backgroundColor: '#00E5FF',
-        borderRadius: 4,
+        backgroundColor: '#22C55E',
+        borderRadius: 3,
     },
     successBox: {
         alignItems: 'center',
-        paddingVertical: 20,
     },
     successCircle: {
         width: 80,
         height: 80,
-        borderRadius: 40,
-        backgroundColor: '#00E5FF10',
-        borderWidth: 1,
-        borderColor: '#00E5FF40',
+        borderRadius: 24,
+        backgroundColor: '#1E1F24',
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 20,
     },
     successText: {
         color: '#FFFFFF',
-        fontSize: 18,
-        fontFamily: 'SpaceGrotesk_700Bold',
-        marginBottom: 25,
+        fontSize: 20,
+        fontFamily: 'PlusJakartaSans_700Bold',
+        marginBottom: 8,
     },
-    resetButton: {
-        backgroundColor: '#1a1a1a',
-        paddingHorizontal: 40,
-        paddingVertical: 15,
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: '#333',
+    successSub: {
+        color: '#717684',
+        fontSize: 13,
+        fontFamily: 'PlusJakartaSans_400Regular',
     },
-    resetButtonText: {
-        color: '#00E5FF',
-        fontFamily: 'SpaceGrotesk_700Bold',
-        fontSize: 14,
+    bottomArea: {
+        paddingHorizontal: 20,
+        paddingTop: 12,
+        backgroundColor: '#080808',
+    },
+    actionButton: {
+        width: '100%',
+        height: 52,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 14,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    actionButtonText: {
+        color: '#080808',
+        fontSize: 15,
+        fontFamily: 'PlusJakartaSans_700Bold',
+    },
+    actionButtonDisabled: {
+        backgroundColor: '#27282F',
+    },
+    actionButtonSecondary: {
+        width: '100%',
+        height: 52,
+        backgroundColor: '#1E1F24',
+        borderRadius: 14,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    actionButtonTextSecondary: {
+        color: '#FFFFFF',
+        fontSize: 15,
+        fontFamily: 'PlusJakartaSans_700Bold',
     }
 });
 

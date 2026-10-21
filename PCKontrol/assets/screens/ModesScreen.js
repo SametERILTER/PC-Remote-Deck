@@ -4,14 +4,18 @@ import {
     Text,
     StyleSheet,
     TouchableOpacity,
-    SafeAreaView,
     ScrollView,
     ActivityIndicator,
 } from 'react-native';
-import { FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
+import { FontAwesome5 } from '@expo/vector-icons';
+import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslation } from 'react-i18next';
 
 const ModesScreen = ({ navigation }) => {
+    const insets = useSafeAreaInsets();
+    const { t } = useTranslation();
     const [baseUrl, setBaseUrl] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -44,131 +48,151 @@ const ModesScreen = ({ navigation }) => {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <FontAwesome5 name="chevron-left" size={20} color="#E1E1E1" />
+        <View style={styles.container}>
+            <StatusBar style="light" />
+
+            {/* Üst Başlık */}
+            <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) + 20, paddingBottom: 16 }]}>
+                <TouchableOpacity 
+                    onPress={() => navigation.goBack()} 
+                    style={styles.backButton}
+                    activeOpacity={0.7}
+                >
+                    <FontAwesome5 name="chevron-left" size={15} color="#E2E8F0" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>MODLAR</Text>
+                <Text style={styles.headerTitle}>{t('modes.title')}</Text>
+                <View style={{ width: 38 }} />
             </View>
 
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-                <Text style={styles.sectionTitle}>Senaryolar</Text>
+            <ScrollView 
+                contentContainerStyle={[
+                    styles.scrollContent, 
+                    { paddingBottom: Math.max(insets.bottom, 16) + 30 }
+                ]}
+                showsVerticalScrollIndicator={false}
+            >
+                <Text style={styles.sectionTitle}>{t('modes.scenarios')}</Text>
                 
                 <TouchableOpacity 
                     style={styles.modeCard}
                     onPress={() => activateMode('/mode-study')}
                     disabled={loading}
+                    activeOpacity={0.75}
                 >
-                    <FontAwesome5 name="graduation-cap" size={120} color="#4285F4" style={styles.cardBgIcon} />
-                    <View style={[styles.iconContainer, { backgroundColor: '#4285F4' }]}>
-                        <FontAwesome5 name="graduation-cap" size={24} color="#FFF" />
+                    <View style={styles.iconContainer}>
+                        <FontAwesome5 name="graduation-cap" size={18} color="#60A5FA" />
                     </View>
                     <View style={styles.modeInfo}>
-                        <Text style={styles.modeName}>Ders Modu</Text>
-                        <Text style={styles.modeDescription}>Google Classroom ve Gemini'yi Chrome'da açar.</Text>
+                        <Text style={styles.modeName}>{t('modes.study_mode')}</Text>
+                        <Text style={styles.modeDescription}>{t('modes.study_desc')}</Text>
                     </View>
                     {loading ? (
-                        <ActivityIndicator color="#4285F4" />
+                        <ActivityIndicator color="#FFFFFF" size="small" />
                     ) : (
-                        <FontAwesome5 name="play" size={16} color="#444" />
+                        <View style={styles.playBtn}>
+                            <FontAwesome5 name="play" size={12} color="#CBD5E1" />
+                        </View>
                     )}
                 </TouchableOpacity>
 
-                {/* Placeholder for future modes */}
-                <View style={[styles.modeCard, { opacity: 0.5 }]}>
-                    <FontAwesome5 name="robot" size={120} color="#E74C3C" style={styles.cardBgIcon} />
-                    <View style={[styles.iconContainer, { backgroundColor: '#E74C3C' }]}>
-                        <FontAwesome5 name="robot" size={24} color="#FFF" />
+                {/* Gelecek Modlar */}
+                <View style={[styles.modeCard, { opacity: 0.55 }]}>
+                    <View style={styles.iconContainer}>
+                        <FontAwesome5 name="robot" size={18} color="#9CA0AC" />
                     </View>
                     <View style={styles.modeInfo}>
-                        <Text style={styles.modeName}>Stark Modu</Text>
-                        <Text style={styles.modeDescription}>Yakında eklenecek...</Text>
+                        <Text style={styles.modeName}>{t('modes.stark_mode')}</Text>
+                        <Text style={styles.modeDescription}>{t('modes.stark_desc')}</Text>
                     </View>
-                    <FontAwesome5 name="lock" size={16} color="#444" />
+                    <View style={styles.playBtn}>
+                        <FontAwesome5 name="lock" size={12} color="#717684" />
+                    </View>
                 </View>
-
             </ScrollView>
-        </SafeAreaView>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#0e0e0e',
+        backgroundColor: '#080808',
     },
     header: {
-        paddingHorizontal: 24,
-        paddingTop: 60,
-        paddingBottom: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        backgroundColor: '#080808',
+        zIndex: 10,
     },
     backButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: '#1a1a1a',
+        width: 38,
+        height: 38,
+        borderRadius: 12,
+        backgroundColor: '#1E1F24',
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 20,
     },
     headerTitle: {
         color: '#FFFFFF',
-        fontFamily: 'SpaceGrotesk_700Bold',
-        fontSize: 32,
-        letterSpacing: 1,
+        fontFamily: 'PlusJakartaSans_700Bold',
+        fontSize: 18,
+        letterSpacing: -0.3,
     },
     scrollContent: {
-        paddingHorizontal: 24,
-        paddingBottom: 100,
+        paddingHorizontal: 18,
+        paddingTop: 10,
     },
     sectionTitle: {
-        color: '#444',
-        fontFamily: 'SpaceGrotesk_700Bold',
-        fontSize: 13,
+        color: '#717684',
+        fontFamily: 'PlusJakartaSans_700Bold',
+        fontSize: 11,
         textTransform: 'uppercase',
-        marginBottom: 16,
-        letterSpacing: 1.5,
+        marginBottom: 12,
+        letterSpacing: 1.2,
+        marginLeft: 2,
     },
     modeCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#1a1a1a',
-        borderRadius: 32,
-        padding: 20,
-        marginBottom: 16,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.03)',
-        overflow: 'hidden',
-    },
-    cardBgIcon: {
-        position: 'absolute',
-        right: -30,
-        bottom: -30,
-        opacity: 0.04,
-        transform: [{ rotate: '15deg' }],
+        backgroundColor: '#1E1F24',
+        borderRadius: 18,
+        padding: 16,
+        marginBottom: 12,
     },
     iconContainer: {
-        width: 56,
-        height: 56,
-        borderRadius: 18,
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        backgroundColor: '#27282F',
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 16,
+        marginRight: 14,
     },
     modeInfo: {
         flex: 1,
     },
     modeName: {
         color: '#FFFFFF',
-        fontFamily: 'SpaceGrotesk_700Bold',
-        fontSize: 18,
-        marginBottom: 4,
+        fontFamily: 'PlusJakartaSans_700Bold',
+        fontSize: 15,
+        marginBottom: 2,
     },
     modeDescription: {
-        color: '#666',
-        fontFamily: 'SpaceGrotesk_400Regular',
+        color: '#717684',
+        fontFamily: 'PlusJakartaSans_400Regular',
         fontSize: 12,
+        lineHeight: 16,
+    },
+    playBtn: {
+        width: 32,
+        height: 32,
+        borderRadius: 10,
+        backgroundColor: '#27282F',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginLeft: 8,
     },
 });
 

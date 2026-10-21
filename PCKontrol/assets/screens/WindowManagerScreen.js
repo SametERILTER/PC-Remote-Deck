@@ -3,23 +3,23 @@ import {
     View,
     Text,
     StyleSheet,
-    SafeAreaView,
     TouchableOpacity,
     Dimensions,
     ActivityIndicator,
     PanResponder,
     Animated,
+    Platform,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import * as NavigationBar from 'expo-navigation-bar';
 import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 const WindowItem = ({ window, scaleX, scaleY, onMove, onClose }) => {
     const pan = useRef(new Animated.ValueXY({ x: window.x * scaleX, y: window.y * scaleY })).current;
-
-    // Update pan when window position updates from server (if not being dragged)
     const isDragging = useRef(false);
 
     useEffect(() => {
@@ -71,18 +71,21 @@ const WindowItem = ({ window, scaleX, scaleY, onMove, onClose }) => {
                 <TouchableOpacity 
                     style={styles.closeButton} 
                     onPress={() => onClose(window.id)}
+                    activeOpacity={0.7}
                 >
-                    <FontAwesome5 name="times" size={12} color="#FFF" />
+                    <FontAwesome5 name="times" size={10} color="#FFFFFF" />
                 </TouchableOpacity>
             </View>
             <View style={styles.windowContent}>
-                <FontAwesome5 name="window-maximize" size={20} color="#333" />
+                <FontAwesome5 name="window-maximize" size={18} color="#555966" />
             </View>
         </Animated.View>
     );
 };
 
 const WindowManagerScreen = ({ navigation }) => {
+    const insets = useSafeAreaInsets();
+    const { t } = useTranslation();
     const [windows, setWindows] = useState([]);
     const [baseUrl, setBaseUrl] = useState('');
     const [pcResolution, setPcResolution] = useState({ width: 1920, height: 1080 });
@@ -97,19 +100,38 @@ const WindowManagerScreen = ({ navigation }) => {
 
     useEffect(() => {
         const unsubscribeFocus = navigation.addListener('focus', () => {
-            ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE_RIGHT);
-            NavigationBar.setVisibilityAsync('hidden');
+            if (ScreenOrientation && ScreenOrientation.lockAsync) {
+                try {
+                    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE_RIGHT);
+                } catch (e) {}
+            }
+            if (Platform.OS === 'android' && NavigationBar?.setVisibilityAsync) {
+                try {
+                    NavigationBar.setVisibilityAsync('hidden');
+                } catch (e) {}
+            }
         });
 
-        const setup = async () => {
-            await loadSettings();
-        };
+        const unsubscribeBlur = navigation.addListener('blur', () => {
+            if (windowInterval.current) clearInterval(windowInterval.current);
+            if (ScreenOrientation && ScreenOrientation.lockAsync) {
+                try {
+                    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+                } catch (e) {}
+            }
+            if (Platform.OS === 'android' && NavigationBar?.setVisibilityAsync) {
+                try {
+                    NavigationBar.setVisibilityAsync('visible');
+                } catch (e) {}
+            }
+        });
 
-        setup();
+        loadSettings();
 
         return () => {
             if (windowInterval.current) clearInterval(windowInterval.current);
             unsubscribeFocus();
+            unsubscribeBlur();
         };
     }, [navigation]);
 
@@ -117,7 +139,7 @@ const WindowManagerScreen = ({ navigation }) => {
         if (baseUrl) {
             fetchScreenInfo();
             fetchWindows();
-            windowInterval.current = setInterval(fetchWindows, 500); // 500ms to balance performance
+            windowInterval.current = setInterval(fetchWindows, 600);
         }
     }, [baseUrl]);
 
@@ -169,32 +191,37 @@ const WindowManagerScreen = ({ navigation }) => {
     const closeWindow = async (id) => {
         try {
             await fetch(`${baseUrl}/close-window-by-handle?id=${id}`);
-            // Optimistik güncelleme: Pencereyi anında listeden çıkar
             setWindows(prev => prev.filter(w => w.id !== id));
         } catch (e) {
             console.log('Close window error');
         }
     };
 
-    const handleBack = () => {
-        navigation.goBack();
-    };
-
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
             <StatusBar hidden />
             
             {/* Header Overlay */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-                    <FontAwesome5 name="chevron-left" size={16} color="#E1E1E1" />
+            <View style={[
+                styles.header, 
+                { 
+                    top: Math.max(insets.top, 14), 
+                    left: Math.max(insets.left, 16) 
+                }
+            ]}>
+                <TouchableOpacity 
+                    onPress={() => navigation.goBack()} 
+                    style={styles.backButton}
+                    activeOpacity={0.7}
+                >
+                    <FontAwesome5 name="chevron-left" size={13} color="#E2E8F0" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Pencere Yönetimi</Text>
+                <Text style={styles.headerTitle}>{t('window_manager.title')}</Text>
             </View>
 
             {loading ? (
                 <View style={styles.centerContainer}>
-                    <ActivityIndicator size="large" color="#4285F4" />
+                    <ActivityIndicator size="large" color="#FFFFFF" />
                 </View>
             ) : (
                 <View style={styles.canvas}>
@@ -210,40 +237,38 @@ const WindowManagerScreen = ({ navigation }) => {
                     ))}
                 </View>
             )}
-        </SafeAreaView>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#1A1A1A',
+        backgroundColor: '#080808',
     },
     header: {
         position: 'absolute',
-        top: 20,
-        left: 20,
         zIndex: 100,
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(0,0,0,0.6)',
-        paddingHorizontal: 15,
-        paddingVertical: 10,
-        borderRadius: 25,
+        backgroundColor: '#1E1F24',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 14,
+        gap: 10,
     },
     backButton: {
         width: 30,
         height: 30,
-        borderRadius: 15,
-        backgroundColor: '#333',
+        borderRadius: 8,
+        backgroundColor: '#27282F',
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 10,
     },
     headerTitle: {
-        fontFamily: 'Inter_700Bold',
-        fontSize: 14,
-        color: '#E1E1E1',
+        fontFamily: 'PlusJakartaSans_700Bold',
+        fontSize: 13,
+        color: '#FFFFFF',
     },
     centerContainer: {
         flex: 1,
@@ -252,47 +277,40 @@ const styles = StyleSheet.create({
     },
     canvas: {
         flex: 1,
-        backgroundColor: '#121212',
+        backgroundColor: '#080808',
     },
     windowBox: {
         position: 'absolute',
-        backgroundColor: '#FFF',
-        borderRadius: 8,
+        backgroundColor: '#1E1F24',
+        borderRadius: 12,
         overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: '#4285F4',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 5,
-        elevation: 6,
     },
     windowTitleBar: {
         height: 28,
-        backgroundColor: '#4285F4',
-        paddingHorizontal: 8,
+        backgroundColor: '#27282F',
+        paddingHorizontal: 10,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
     },
     windowTitle: {
-        color: '#FFF',
-        fontSize: 10,
-        fontFamily: 'Inter_600SemiBold',
+        color: '#FFFFFF',
+        fontSize: 11,
+        fontFamily: 'PlusJakartaSans_600SemiBold',
         flex: 1,
     },
     closeButton: {
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-        backgroundColor: '#C0392B',
+        width: 18,
+        height: 18,
+        borderRadius: 6,
+        backgroundColor: '#EF4444',
         justifyContent: 'center',
         alignItems: 'center',
-        marginLeft: 5,
+        marginLeft: 8,
     },
     windowContent: {
         flex: 1,
-        backgroundColor: '#F5F5F5',
+        backgroundColor: '#1E1F24',
         justifyContent: 'center',
         alignItems: 'center',
     },

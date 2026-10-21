@@ -3,7 +3,6 @@ import {
     View,
     Text,
     StyleSheet,
-    SafeAreaView,
     TextInput,
     TouchableOpacity,
     ScrollView,
@@ -11,10 +10,15 @@ import {
     Platform,
     ActivityIndicator,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { FontAwesome5 } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslation } from 'react-i18next';
 
 const SendCommandScreen = ({ navigation }) => {
+    const insets = useSafeAreaInsets();
+    const { t } = useTranslation();
     const [command, setCommand] = useState('');
     const [history, setHistory] = useState([]);
     const [baseUrl, setBaseUrl] = useState('');
@@ -42,7 +46,7 @@ const SendCommandScreen = ({ navigation }) => {
     const handleSend = async () => {
         if (!command.trim()) return;
         if (!baseUrl) {
-            addToHistory('Sistem: Hata - IP adresi ayarlanmamış!', 'error');
+            addToHistory(t('command.sys_error_ip'), 'error');
             return;
         }
 
@@ -57,12 +61,12 @@ const SendCommandScreen = ({ navigation }) => {
             const result = await response.text();
 
             if (response.ok) {
-                addToHistory(`Sistem: ${result}`, 'success');
+                addToHistory(`${t('command.sys')} ${result}`, 'success');
             } else {
-                addToHistory(`Sistem: Hata - ${result}`, 'error');
+                addToHistory(`${t('command.sys_error')} ${result}`, 'error');
             }
         } catch (error) {
-            addToHistory(`Sistem: Bağlantı hatası - ${error.message}`, 'error');
+            addToHistory(`${t('command.sys_conn_error')} ${error.message}`, 'error');
         } finally {
             setLoading(false);
         }
@@ -74,31 +78,41 @@ const SendCommandScreen = ({ navigation }) => {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
+            <StatusBar style="light" />
             <KeyboardAvoidingView 
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{ flex: 1 }}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
             >
-                <View style={styles.header}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <FontAwesome5 name="chevron-left" size={20} color="#E1E1E1" />
+                {/* Üst Başlık */}
+                <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) + 20, paddingBottom: 16 }]}>
+                    <TouchableOpacity 
+                        onPress={() => navigation.goBack()} 
+                        style={styles.backButton}
+                        activeOpacity={0.7}
+                    >
+                        <FontAwesome5 name="chevron-left" size={15} color="#E2E8F0" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>KOMUT</Text>
+                    <Text style={styles.headerTitle}>{t('command.title')}</Text>
+                    <View style={styles.headerPlaceholder} />
                 </View>
 
+                {/* Terminal Alanı */}
                 <View style={styles.terminalContainer}>
                     <ScrollView
                         ref={scrollViewRef}
-                        onContentSizeChange={() => scrollViewRef.current.scrollToEnd({ animated: true })}
+                        onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
                         style={styles.terminalScroll}
                         contentContainerStyle={styles.terminalContent}
-                        showsVerticalScrollIndicator={true}
+                        showsVerticalScrollIndicator={false}
                     >
                         {history.length === 0 ? (
                             <View style={styles.emptyContainer}>
-                                <FontAwesome5 name="terminal" size={40} color="#333" style={{ marginBottom: 20 }} />
-                                <Text style={styles.placeholderText}>Terminal hazır. Komut gönderin...</Text>
+                                <View style={styles.emptyIconBox}>
+                                    <FontAwesome5 name="terminal" size={24} color="#717684" />
+                                </View>
+                                <Text style={styles.placeholderText}>{t('command.terminal_ready')}</Text>
                             </View>
                         ) : (
                             history.map((item) => (
@@ -118,14 +132,15 @@ const SendCommandScreen = ({ navigation }) => {
                     </ScrollView>
                 </View>
 
-                <View style={styles.inputSection}>
+                {/* Komut Giriş Alanı */}
+                <View style={[styles.inputSection, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}>
                     <View style={styles.inputContainer}>
                         <TextInput
                             style={styles.input}
                             value={command}
                             onChangeText={setCommand}
-                            placeholder="Komutunuzu yazın..."
-                            placeholderTextColor="#666"
+                            placeholder={t('command.placeholder')}
+                            placeholderTextColor="#555966"
                             autoCapitalize="none"
                             autoCorrect={false}
                             onSubmitEditing={handleSend}
@@ -134,73 +149,89 @@ const SendCommandScreen = ({ navigation }) => {
                             style={[styles.sendButton, !command.trim() && styles.disabledButton]}
                             onPress={handleSend}
                             disabled={!command.trim() || loading}
+                            activeOpacity={0.8}
                         >
                             {loading ? (
-                                <ActivityIndicator size="small" color="#000" />
+                                <ActivityIndicator size="small" color="#080808" />
                             ) : (
-                                <FontAwesome5 name="paper-plane" size={18} color="#000" />
+                                <FontAwesome5 
+                                    name="paper-plane" 
+                                    size={15} 
+                                    color={command.trim() ? '#080808' : '#717684'} 
+                                />
                             )}
                         </TouchableOpacity>
                     </View>
                 </View>
             </KeyboardAvoidingView>
-        </SafeAreaView>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#0e0e0e',
+        backgroundColor: '#080808',
     },
     header: {
-        paddingHorizontal: 24,
-        paddingTop: 60,
-        paddingBottom: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        backgroundColor: '#080808',
+        zIndex: 10,
     },
     backButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: '#1a1a1a',
+        width: 38,
+        height: 38,
+        borderRadius: 12,
+        backgroundColor: '#1E1F24',
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 20,
     },
     headerTitle: {
         color: '#FFFFFF',
-        fontFamily: 'SpaceGrotesk_700Bold',
-        fontSize: 32,
-        letterSpacing: 1,
+        fontFamily: 'PlusJakartaSans_700Bold',
+        fontSize: 18,
+        letterSpacing: -0.3,
+    },
+    headerPlaceholder: {
+        width: 38,
     },
     terminalContainer: {
         flex: 1,
-        marginHorizontal: 20,
-        marginBottom: 15,
-        backgroundColor: '#000',
-        borderRadius: 24,
-        padding: 20,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
+        marginHorizontal: 18,
+        marginBottom: 14,
+        backgroundColor: '#1E1F24',
+        borderRadius: 20,
+        padding: 16,
         overflow: 'hidden',
     },
     terminalScroll: {
         flex: 1,
     },
     terminalContent: {
-        paddingBottom: 20,
+        paddingBottom: 16,
     },
     emptyContainer: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        marginTop: 50,
-        opacity: 0.5,
+        marginTop: 70,
+    },
+    emptyIconBox: {
+        width: 52,
+        height: 52,
+        borderRadius: 16,
+        backgroundColor: '#27282F',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 14,
     },
     placeholderText: {
-        fontFamily: 'SpaceGrotesk_400Regular',
-        color: '#333',
-        fontSize: 14,
+        fontFamily: 'PlusJakartaSans_500Medium',
+        color: '#717684',
+        fontSize: 13,
         textAlign: 'center',
     },
     historyItem: {
@@ -209,60 +240,56 @@ const styles = StyleSheet.create({
         flexWrap: 'wrap',
     },
     timeText: {
-        fontFamily: 'SpaceGrotesk_400Regular',
-        color: '#333',
+        fontFamily: 'PlusJakartaSans_400Regular',
+        color: '#555966',
         fontSize: 11,
     },
     historyText: {
-        fontFamily: 'SpaceGrotesk_400Regular',
-        fontSize: 14,
-        color: '#E1E1E1',
+        fontFamily: 'PlusJakartaSans_500Medium',
+        fontSize: 13,
+        color: '#E2E8F0',
         flex: 1,
-        lineHeight: 20,
+        lineHeight: 19,
     },
     commandText: {
-        color: '#00E5FF',
-        fontFamily: 'SpaceGrotesk_600SemiBold',
+        color: '#93C5FD',
+        fontFamily: 'PlusJakartaSans_600SemiBold',
     },
     successText: {
-        color: '#27AE60',
+        color: '#22C55E',
     },
     errorText: {
-        color: '#E74C3C',
+        color: '#EF4444',
     },
     inputSection: {
-        paddingHorizontal: 20,
-        paddingBottom: 100, // Tab bar boşluğu
+        paddingHorizontal: 18,
     },
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#1a1a1a',
-        borderRadius: 20,
-        paddingLeft: 20,
-        paddingRight: 10,
-        height: 64,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.03)',
+        backgroundColor: '#1E1F24',
+        borderRadius: 16,
+        paddingLeft: 16,
+        paddingRight: 8,
+        height: 56,
     },
     input: {
         flex: 1,
         height: '100%',
         color: '#FFFFFF',
-        fontFamily: 'SpaceGrotesk_500Medium',
-        fontSize: 16,
+        fontFamily: 'PlusJakartaSans_500Medium',
+        fontSize: 14,
     },
     sendButton: {
-        width: 48,
-        height: 48,
-        borderRadius: 14,
-        backgroundColor: '#00E5FF',
+        width: 42,
+        height: 42,
+        borderRadius: 12,
+        backgroundColor: '#FFFFFF',
         justifyContent: 'center',
         alignItems: 'center',
     },
     disabledButton: {
-        backgroundColor: '#2A2A2A',
-        opacity: 0.5,
+        backgroundColor: '#27282F',
     },
 });
 
