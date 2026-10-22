@@ -1037,20 +1037,20 @@ func main() {
 
 		file, handler, err := r.FormFile("file")
 		if err != nil {
-			log.Println("Dosya alma hatası:", err)
+			log.Println("File upload error:", err)
 			http.Error(w, "Dosya alınamadı", http.StatusInternalServerError)
 			return
 		}
 		defer file.Close()
 
-		log.Printf("Dosya alınıyor: %s (%d bytes)\n", handler.Filename, handler.Size)
+		log.Printf("Receiving file: %s (%d bytes)\n", handler.Filename, handler.Size)
 
 		// User Desktop path
 		homeDir, _ := os.UserHomeDir()
 		desktopPath := homeDir + "\\Desktop\\" + handler.Filename
 		dst, err := os.Create(desktopPath)
 		if err != nil {
-			log.Println("Dosya oluşturma hatası:", err)
+			log.Println("File creation error:", err)
 			http.Error(w, "Dosya kaydedilemedi", http.StatusInternalServerError)
 			return
 		}
@@ -1085,8 +1085,8 @@ func main() {
 	})
 
 	mux.HandleFunc("/shutdown", func(w http.ResponseWriter, r *http.Request) {
-		log.Println("Bilgisayar 3 saniye içinde kapatılıyor!")
-		fmt.Println("Bilgisayar 3 saniye içinde kapatılıyor!")
+		log.Println("Shutting down computer in 3 seconds!")
+		fmt.Println("Shutting down computer in 3 seconds!")
 		exec.Command("cmd", "/c", "shutdown /s /f /t 3").Start()
 		fmt.Fprint(w, "Bilgisayar kapatılıyor")
 	})
@@ -1102,8 +1102,8 @@ func main() {
 		fmt.Sscanf(minutes, "%d", &m)
 		seconds := m * 60
 
-		log.Printf("Bilgisayar %d dakika sonra kapatılacak şekilde ayarlandı\n", m)
-		fmt.Printf("Bilgisayar %d dakika sonra kapatılacak şekilde ayarlandı\n", m)
+		log.Printf("Computer scheduled to shut down in %d minute(s)\n", m)
+		fmt.Printf("Computer scheduled to shut down in %d minute(s)\n", m)
 
 		cmdStr := fmt.Sprintf("shutdown /s /f /t %d", seconds)
 		exec.Command("cmd", "/c", cmdStr).Start()
@@ -1111,8 +1111,8 @@ func main() {
 	})
 
 	mux.HandleFunc("/shutdown-abort", func(w http.ResponseWriter, r *http.Request) {
-		log.Println("Kapatma zamanlayıcısı iptal edildi")
-		fmt.Println("Kapatma zamanlayıcısı iptal edildi")
+		log.Println("Shutdown timer aborted")
+		fmt.Println("Shutdown timer aborted")
 		exec.Command("cmd", "/c", "shutdown /a").Start()
 		fmt.Fprint(w, "Kapatma iptal edildi")
 	})
@@ -1259,9 +1259,9 @@ func main() {
 ╚═╝      ╚═════╝     ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝ ╚══════╝                                                                                                                                                                                                  
 `
 	fmt.Println(asciiArt)
-	fmt.Printf("Pc Control Sunucusu Başlatıldı\n")
-	fmt.Printf("Dinlenen Port: %s\n", port)
-	fmt.Printf("IP Adresi: %s\n", localIP)
+	fmt.Printf("PC Control Server Started\n")
+	fmt.Printf("Listening Port: %s\n", port)
+	fmt.Printf("IP Address: %s\n", localIP)
 
 	qrConfig := qrterminal.Config{
 		Level:     qrterminal.L,
@@ -1273,10 +1273,10 @@ func main() {
 	qrData := fmt.Sprintf("%s:%s", localIP, port)
 	qrterminal.GenerateWithConfig(qrData, qrConfig)
 
-	fmt.Println("Telefonunuzdan Pckontrol uygulamasını açın ve QR kodu okutun.")
+	fmt.Println("Open the PC Control app on your phone and scan the QR code.")
 
 	err = http.ListenAndServe("0.0.0.0:"+port, enableCORS(mux))
 	if err != nil {
-		log.Fatal("Sunucu başlatılamadı: ", err)
+		log.Fatal("Failed to start server: ", err)
 	}
 }
