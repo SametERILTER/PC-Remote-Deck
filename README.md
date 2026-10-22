@@ -1,7 +1,7 @@
 # PC Control - Remote PC Control System
 
 <p align="center">
-  <img src="PCKontrol/screenshots/87ac75ce-376e-4599-9cbb-55f16c598512.jpeg" width="300" />
+  <img src="PCKontrol/screenshots/87ac75ce-376e-4599-9cbb-55f16c598512.jpeg" width="600" />
 </p>
 
 [Türkçe Versiyon (README_TR.md)](README_TR.md)
@@ -18,8 +18,8 @@ The system consists of two main parts:
 
 <div align="center">
   <p align="center">
-    <img src="PCKontrol/screenshots/29fc7c93-4f01-4c5e-b55b-61b640749b5c.jpeg" width="250" />
-    <img src="PCKontrol/screenshots/ebe33967-481d-4679-a9af-8b46237308a0.jpeg" width="250" />
+    <img src="PCKontrol/screenshots/29fc7c93-4f01-4c5e-b55b-61b640749b5c.jpeg" width="400" />
+    <img src="PCKontrol/screenshots/ebe33967-481d-4679-a9af-8b46237308a0.jpeg" width="400" />
   </p>
   <p align="center">
     <img src="PCKontrol/screenshots/07e57de3-b0ef-41a3-90ae-7ce646f5443f.jpeg" width="250" />
