@@ -73,4 +73,4 @@ This application has powerful features like Remote Code Execution and file syste
 This project is developed for educational and personal use. Feel free to submit Pull Requests or report issues on GitHub.
 
 ## Contact
-You can reach me at **sametbilal34@gmail.com**. While the project is functional, some features are still actively improving. Thanks to everyone who contributes!
+You can reach me at **sametbilal34@gmail**. While the project is functional, some features are still actively improving. Thanks to everyone who contributes!

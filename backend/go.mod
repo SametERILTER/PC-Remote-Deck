@@ -11,6 +11,7 @@ require (
 require (
 	github.com/gen2brain/shm v0.1.0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
+	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/jezek/xgb v1.1.1 // indirect
 	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/term v0.13.0 // indirect

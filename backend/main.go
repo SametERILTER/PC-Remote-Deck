@@ -18,6 +18,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/gorilla/websocket"
 	"github.com/kbinani/screenshot"
 	"github.com/lxn/win"
 	"github.com/mdp/qrterminal/v3"
@@ -108,15 +109,7 @@ type INPUT struct {
 }
 
 func mouseEvent(flags uint32, dx, dy int32, data uint32) {
-	var input INPUT
-	input.Type = INPUT_MOUSE
-	mi := (*MOUSEINPUT)(unsafe.Pointer(&input.Data[0]))
-	mi.Flags = flags
-	mi.Dx = dx
-	mi.Dy = dy
-	mi.MouseData = data
-
-	procSendInput.Call(1, uintptr(unsafe.Pointer(&input)), uintptr(unsafe.Sizeof(input)))
+	procMouseEvent.Call(uintptr(flags), uintptr(dx), uintptr(dy), uintptr(data), 0)
 }
 
 func sendKey(vk uint16) {
@@ -895,6 +888,110 @@ func main() {
 		procSendInput.Call(1, uintptr(unsafe.Pointer(&inputAltUp)), uintptr(unsafe.Sizeof(inputAltUp)))
 
 		fmt.Fprint(w, "Alt+Tab sent")
+	})
+
+	var wsUpgrader = websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool {
+			return true // Allow all local network connections
+		},
+		ReadBufferSize:  2048,
+		WriteBufferSize: 2048,
+	}
+
+	mux.HandleFunc("/ws/mouse", func(w http.ResponseWriter, r *http.Request) {
+		conn, err := wsUpgrader.Upgrade(w, r, nil)
+		if err != nil {
+			log.Println("[WebSocket] Upgrade error:", err)
+			return
+		}
+		defer conn.Close()
+
+		for {
+			messageType, p, err := conn.ReadMessage()
+			if err != nil {
+				break
+			}
+
+			if messageType == websocket.TextMessage {
+				msg := strings.TrimSpace(string(p))
+				if msg == "" {
+					continue
+				}
+
+				// Ultra-fast compact text protocol:
+				// "m <dx> <dy>" -> move
+				// "c <left|right|middle>" -> click
+				// "d <left|right>" -> button down (drag)
+				// "u <left|right>" -> button up (drop)
+				// "s <delta>" -> scroll
+				if strings.HasPrefix(msg, "m ") {
+					parts := strings.Split(msg, " ")
+					if len(parts) >= 3 {
+						dx, _ := strconv.ParseFloat(parts[1], 64)
+						dy, _ := strconv.ParseFloat(parts[2], 64)
+						mouseEvent(MOUSEEVENTF_MOVE, int32(dx), int32(dy), 0)
+					}
+				} else if strings.HasPrefix(msg, "c ") {
+					btn := strings.TrimPrefix(msg, "c ")
+					switch btn {
+					case "left":
+						procMouseEvent.Call(uintptr(MOUSEEVENTF_LEFTDOWN), 0, 0, 0, 0)
+						procMouseEvent.Call(uintptr(MOUSEEVENTF_LEFTUP), 0, 0, 0, 0)
+					case "right":
+						procMouseEvent.Call(uintptr(MOUSEEVENTF_RIGHTDOWN), 0, 0, 0, 0)
+						procMouseEvent.Call(uintptr(MOUSEEVENTF_RIGHTUP), 0, 0, 0, 0)
+					case "middle":
+						procMouseEvent.Call(uintptr(0x0020), 0, 0, 0, 0) // MOUSEEVENTF_MIDDLEDOWN
+						procMouseEvent.Call(uintptr(0x0040), 0, 0, 0, 0) // MOUSEEVENTF_MIDDLEUP
+					}
+				} else if strings.HasPrefix(msg, "d ") {
+					btn := strings.TrimPrefix(msg, "d ")
+					if btn == "left" {
+						procMouseEvent.Call(uintptr(MOUSEEVENTF_LEFTDOWN), 0, 0, 0, 0)
+					} else if btn == "right" {
+						procMouseEvent.Call(uintptr(MOUSEEVENTF_RIGHTDOWN), 0, 0, 0, 0)
+					}
+				} else if strings.HasPrefix(msg, "u ") {
+					btn := strings.TrimPrefix(msg, "u ")
+					if btn == "left" {
+						procMouseEvent.Call(uintptr(MOUSEEVENTF_LEFTUP), 0, 0, 0, 0)
+					} else if btn == "right" {
+						procMouseEvent.Call(uintptr(MOUSEEVENTF_RIGHTUP), 0, 0, 0, 0)
+					}
+				} else if strings.HasPrefix(msg, "s ") {
+					deltaStr := strings.TrimPrefix(msg, "s ")
+					delta, _ := strconv.ParseInt(deltaStr, 10, 32)
+					procMouseEvent.Call(uintptr(MOUSEEVENTF_WHEEL), 0, 0, uintptr(int32(delta*120)), 0)
+				} else if msg == "ping" {
+					conn.WriteMessage(websocket.TextMessage, []byte("pong"))
+				} else if strings.HasPrefix(msg, "{") {
+					// Fallback for JSON messages
+					var data struct {
+						Type   string  `json:"type"`
+						Dx     float64 `json:"dx"`
+						Dy     float64 `json:"dy"`
+						Button string  `json:"button"`
+						Delta  int     `json:"delta"`
+					}
+					if json.Unmarshal(p, &data) == nil {
+						switch data.Type {
+						case "move":
+							mouseEvent(MOUSEEVENTF_MOVE, int32(data.Dx), int32(data.Dy), 0)
+						case "click":
+							if data.Button == "right" {
+								procMouseEvent.Call(uintptr(MOUSEEVENTF_RIGHTDOWN), 0, 0, 0, 0)
+								procMouseEvent.Call(uintptr(MOUSEEVENTF_RIGHTUP), 0, 0, 0, 0)
+							} else {
+								procMouseEvent.Call(uintptr(MOUSEEVENTF_LEFTDOWN), 0, 0, 0, 0)
+								procMouseEvent.Call(uintptr(MOUSEEVENTF_LEFTUP), 0, 0, 0, 0)
+							}
+						case "scroll":
+							procMouseEvent.Call(uintptr(MOUSEEVENTF_WHEEL), 0, 0, uintptr(int32(data.Delta*120)), 0)
+						}
+					}
+				}
+			}
+		}
 	})
 
 	mux.HandleFunc("/mouse-move", func(w http.ResponseWriter, r *http.Request) {

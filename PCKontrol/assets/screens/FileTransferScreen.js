@@ -18,6 +18,8 @@ import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -71,6 +73,37 @@ const FileTransferScreen = ({ navigation }) => {
         }
     };
 
+    const pickImage = async () => {
+        try {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('İzin Gerekli', 'Galeriye erişim izni vermeniz gerekiyor.');
+                return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.All,
+                allowsMultipleSelection: true,
+                quality: 1,
+            });
+
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+                resetAnimations();
+                setIsSuccess(false);
+                const mappedAssets = result.assets.map(a => ({
+                    uri: a.uri,
+                    name: a.fileName || a.uri.split('/').pop() || `photo_${Date.now()}.jpg`,
+                    size: a.fileSize || 0,
+                    mimeType: a.mimeType || (a.type === 'video' ? 'video/mp4' : 'image/jpeg'),
+                }));
+                setFiles(mappedAssets);
+            }
+        } catch (error) {
+            console.error("Fotoğraf seçme hatası", error);
+            Alert.alert(t('deck.error'), 'Fotoğraf seçilemedi');
+        }
+    };
+
     const removeFile = (indexToRemove) => {
         const newFiles = files.filter((_, index) => index !== indexToRemove);
         setFiles(newFiles);
@@ -106,22 +139,16 @@ const FileTransferScreen = ({ navigation }) => {
                     useNativeDriver: false 
                 }).start();
 
-                const formData = new FormData();
                 const uriParts = currentFile.uri.split('/');
                 const fileName = currentFile.name || uriParts[uriParts.length - 1];
 
-                formData.append('file', {
-                    uri: currentFile.uri,
-                    name: fileName,
-                    type: currentFile.mimeType || 'application/octet-stream',
+                const uploadResult = await FileSystem.uploadAsync(`${baseUrl}/upload`, currentFile.uri, {
+                    fieldName: 'file',
+                    httpMethod: 'POST',
+                    uploadType: FileSystem.FileSystemUploadType?.MULTIPART ?? 1,
                 });
 
-                const response = await fetch(`${baseUrl}/upload`, {
-                    method: 'POST',
-                    body: formData,
-                });
-
-                if (response.ok) {
+                if (uploadResult.status >= 200 && uploadResult.status < 300) {
                     successCount++;
                 } else {
                     throw new Error(t('file_transfer.upload_err', { name: fileName }));
@@ -312,10 +339,16 @@ const FileTransferScreen = ({ navigation }) => {
                     ) : (
                         <>
                             {files.length === 0 ? (
-                                <TouchableOpacity style={styles.actionButtonSecondary} onPress={pickFile} activeOpacity={0.8}>
-                                    <FontAwesome5 name="folder-open" size={15} color="#FFFFFF" style={{ marginRight: 10 }} />
-                                    <Text style={styles.actionButtonTextSecondary}>{t('file_transfer.select')}</Text>
-                                </TouchableOpacity>
+                                <View style={{ flexDirection: 'row', gap: 10, width: '100%' }}>
+                                    <TouchableOpacity style={[styles.actionButtonSecondary, { flex: 1 }]} onPress={pickImage} activeOpacity={0.8}>
+                                        <FontAwesome5 name="image" size={15} color="#FFFFFF" style={{ marginRight: 8 }} />
+                                        <Text style={styles.actionButtonTextSecondary}>Resim / Galeri</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={[styles.actionButtonSecondary, { flex: 1 }]} onPress={pickFile} activeOpacity={0.8}>
+                                        <FontAwesome5 name="folder-open" size={15} color="#FFFFFF" style={{ marginRight: 8 }} />
+                                        <Text style={styles.actionButtonTextSecondary}>{t('file_transfer.select')}</Text>
+                                    </TouchableOpacity>
+                                </View>
                             ) : (
                                 <TouchableOpacity 
                                     style={[styles.actionButton, uploading && styles.actionButtonDisabled]} 

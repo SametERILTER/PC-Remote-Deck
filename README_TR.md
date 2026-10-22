@@ -73,4 +73,4 @@ Bu uygulama, bilgisayar üzerinde tam yetkili komut çalıştırma (Remote Code 
 Bu proje eğitim ve kişisel kullanım amacıyla geliştirilmiştir. Geliştirilmesine katkıda bulunmak için Pull Request gönderebilir veya karşılaştığınız hataları Issues kısmından bildirebilirsiniz.
 
 ## İletişim
-**sametbilal34@gmail.com** maili üzerinden bana ulaşabilirsiniz. Proje genel olarak çalışsa da eksik olan kısımları bulunmaktadır. Bu konuda yardım eden herkese teşekkür ederim.
+**sametbilal34@gmail** maili üzerinden bana ulaşabilirsiniz. Proje genel olarak çalışsa da eksik olan kısımları bulunmaktadır. Bu konuda yardım eden herkese teşekkür ederim.
