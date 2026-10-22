@@ -317,7 +317,7 @@ const ScreenShotScreen = ({ navigation }) => {
                             <FontAwesome5 name="desktop" size={28} color="#717684" />
                         </View>
                         <Text style={styles.placeholderText}>{t('screenshot.empty')}</Text>
-                        <Text style={styles.placeholderSub}>Ekran görüntüsü almak için aşağıdaki butona basın</Text>
+                        <Text style={styles.placeholderSub}>{t('screenshot.empty_sub')}</Text>
                     </View>
                 )}
             </View>

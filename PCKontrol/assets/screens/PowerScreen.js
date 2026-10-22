@@ -6,14 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 
-const PRESETS = [
-    { label: '15 dk', value: 15 },
-    { label: '30 dk', value: 30 },
-    { label: '45 dk', value: 45 },
-    { label: '1 saat', value: 60 },
-    { label: '1.5 saat', value: 90 },
-    { label: '2 saat', value: 120 },
-];
+const PRESETS = [15, 30, 45, 60, 90, 120];
 
 const PowerScreen = ({ navigation }) => {
     const insets = useSafeAreaInsets();
@@ -34,9 +27,9 @@ const PowerScreen = ({ navigation }) => {
         if (isNaN(num) || num <= 0) return '';
         const h = Math.floor(num / 60);
         const m = num % 60;
-        if (h === 0) return `${m} dakika`;
-        if (m === 0) return `${h} saat`;
-        return `${h} saat ${m} dk`;
+        if (h === 0) return `${m} ${t('power.min_short')}`;
+        if (m === 0) return `${h} ${t('power.hour_short')}`;
+        return t('power.hours_min_short', { h, m });
     };
 
     const getEstimatedTime = (mins) => {
@@ -181,15 +174,15 @@ const PowerScreen = ({ navigation }) => {
                             <View style={styles.timeNumberRow}>
                                 <TextInput
                                     style={styles.bigTimeInput}
-                                    value={minutes}
-                                    onChangeText={(val) => setMinutes(val.replace(/[^0-9]/g, ''))}
-                                    keyboardType="numeric"
-                                    maxLength={3}
-                                    placeholder="0"
-                                    placeholderTextColor="#555966"
-                                    selectTextOnFocus
-                                />
-                                <Text style={styles.bigTimeUnit}>dk</Text>
+                                     value={minutes}
+                                     onChangeText={(val) => setMinutes(val.replace(/[^0-9]/g, ''))}
+                                     keyboardType="numeric"
+                                     maxLength={3}
+                                     placeholder="0"
+                                     placeholderTextColor="#555966"
+                                     selectTextOnFocus
+                                 />
+                                 <Text style={styles.bigTimeUnit}>{t('power.min_short')}</Text>
                             </View>
                             {formatDuration(minutes) ? (
                                 <Text style={styles.durationSubText}>{formatDuration(minutes)}</Text>
@@ -209,27 +202,27 @@ const PowerScreen = ({ navigation }) => {
                     {estimatedTime && (
                         <View style={styles.estimatedBox}>
                             <Text style={styles.estimatedText}>
-                                Tahmini Kapanış: <Text style={styles.estimatedTimeBold}>~{estimatedTime}</Text>
+                                {t('power.est_shutdown')}<Text style={styles.estimatedTimeBold}>~{estimatedTime}</Text>
                             </Text>
                         </View>
                     )}
 
                     {/* Hızlı Süre Seçenekleri (Presets) */}
                     <View style={styles.presetsGrid}>
-                        {PRESETS.map((p) => {
-                            const isSelected = parseInt(minutes, 10) === p.value;
+                        {PRESETS.map((val) => {
+                            const isSelected = parseInt(minutes, 10) === val;
                             return (
                                 <TouchableOpacity
-                                    key={p.value}
+                                    key={val}
                                     style={[styles.presetChip, isSelected && styles.presetChipActive]}
                                     onPress={() => {
                                         try { Vibration.vibrate(8); } catch {}
-                                        setMinutes(p.value.toString());
+                                        setMinutes(val.toString());
                                     }}
                                     activeOpacity={0.7}
                                 >
                                     <Text style={[styles.presetText, isSelected && styles.presetTextActive]}>
-                                        {p.label}
+                                        {formatDuration(val)}
                                     </Text>
                                 </TouchableOpacity>
                             );
@@ -244,7 +237,7 @@ const PowerScreen = ({ navigation }) => {
                         <FontAwesome5 name="clock" size={16} color="#080808" style={styles.btnIcon} />
                         <View style={styles.btnTextCol}>
                             <Text style={[styles.btnTitle, { color: '#080808' }]}>
-                                {t('power.timer_btn')} {minutes ? `(${minutes} dk)` : ''}
+                                {t('power.timer_btn')} {minutes ? `(${minutes} ${t('power.min_short')})` : ''}
                             </Text>
                             <Text style={[styles.btnSub, { color: '#4B5563' }]}>{t('power.timer_sub')}</Text>
                         </View>

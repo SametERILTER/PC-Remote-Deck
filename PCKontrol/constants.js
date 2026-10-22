@@ -44,3 +44,15 @@ export const DEFAULT_DECK_IDS = ['1', '2', '3', '15', '10', '4', '5', '6', '7', 
 export const CHROME_DECK_IDS = ['c1', 'c2', 'c3', 'c4', 'c5', 'c6'];
 export const SPOTIFY_DECK_IDS = ['s1', 's2', 's3', 's4', '9'];
 export const ANTIGRAVITY_DECK_IDS = ['a1', 'a2', 'a3', 'a4', 'a5'];
+
+export const getDeckBtnTitle = (item, t) => {
+    if (!item) return '';
+    if (t) {
+        const key = `deck_btn.${item.id}`;
+        const translated = t(key);
+        if (translated && translated !== key) {
+            return translated;
+        }
+    }
+    return item.title || '';
+};

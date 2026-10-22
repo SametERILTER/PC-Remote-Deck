@@ -20,7 +20,7 @@ import * as NavigationBar from 'expo-navigation-bar';
 import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ALL_DECK_BUTTONS, DEFAULT_DECK_IDS, CHROME_DECK_IDS, SPOTIFY_DECK_IDS, ANTIGRAVITY_DECK_IDS } from '../../constants';
+import { ALL_DECK_BUTTONS, DEFAULT_DECK_IDS, CHROME_DECK_IDS, SPOTIFY_DECK_IDS, ANTIGRAVITY_DECK_IDS, getDeckBtnTitle } from '../../constants';
 
 
 const fetchWithTimeout = (url, ms = 4000) => {
@@ -128,6 +128,7 @@ const getDarkerColor = (color) => {
 
 // ─── Tek Deck Butonu (3D Mekanik Tuş) ──────────────────────────────────────────
 const DeckButton = ({ item, onPress }) => {
+    const { t } = useTranslation();
     const pressAnim = useRef(new Animated.Value(0)).current;
 
     const pressIn = () => {
@@ -192,7 +193,7 @@ const DeckButton = ({ item, onPress }) => {
                             color="#FFFFFF"
                         />
                     )}
-                    <Text style={styles.deckBtnLabel} numberOfLines={2}>{item.title}</Text>
+                    <Text style={styles.deckBtnLabel} numberOfLines={2}>{getDeckBtnTitle(item, t)}</Text>
                 </Animated.View>
             </View>
         </TouchableOpacity>

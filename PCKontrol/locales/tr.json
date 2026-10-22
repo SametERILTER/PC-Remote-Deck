@@ -32,7 +32,8 @@
     "local_network": "Yerel Ağ (WLAN)",
     "status": "Durum",
     "status_connected": "Bağlı",
-    "status_disconnected": "Bağlı Değil"
+    "status_disconnected": "Bağlı Değil",
+    "deck_footer": "Özelleştirilebilir tuş panelleri ve kısayollar"
   },
   "settings": {
     "title": "AYARLAR",
@@ -110,7 +111,23 @@
     "create": "OLUŞTUR",
     "sel_app_title": "UYGULAMA SEÇ",
     "loading_apps": "Yüklü Uygulamalar Çekiliyor...",
-    "loading_btn": "Yükleniyor..."
+    "loading_btn": "Yükleniyor...",
+    "active_btns": "Aktif Butonlar",
+    "other_btns": "Kullanılabilir Butonlar",
+    "new_btn_title": "ÖZEL BUTON OLUŞTUR",
+    "btn_name": "Buton İsmi",
+    "name_ph": "Örn: Visual Studio, Spotify...",
+    "select_icon": "İkon Seçimi",
+    "select_color": "Renk Seçimi",
+    "custom_img": "Özel Resim (İsteğe Bağlı)",
+    "change_img": "Resmi Değiştir",
+    "pick_img": "Görsel Seç",
+    "type_windows": "Windows Uygulaması",
+    "action_detail": "Eylem Detayı",
+    "path_help": "Çalıştırmak istediğiniz dosya, klasör veya programın tam yolunu girin.",
+    "cmd_help": "Terminalde çalıştırılacak komutu veya betiği yazın.",
+    "keys_help": "Klavye kısayolu kombinasyonunu girin (Örn: ^c, %{F4}, ^+s).",
+    "app_help": "Bilgisayarınızda yüklü olan modern Windows uygulamalarından birini seçin."
   },
   "deck": {
     "unknown_song": "Bilinmeyen Şarkı",
@@ -120,6 +137,41 @@
     "lock_failed": "PC kilitlenemedi.",
     "conn_info": "Bağlantı Bilgileri",
     "windows": "Pencereler"
+  },
+  "deck_btn": {
+    "1": "Ses +",
+    "2": "Ses -",
+    "3": "Sessiz",
+    "4": "Oynat/Dur",
+    "5": "Sonraki",
+    "6": "Hesap Mak.",
+    "7": "Google",
+    "8": "YouTube",
+    "9": "Spotify",
+    "10": "Pencere Kapat",
+    "11": "Chrome",
+    "13": "Not Defteri",
+    "14": "PC Kilitle",
+    "15": "Pencere Değiştir",
+    "16": "Masaüstü",
+    "17": "Görev Yön.",
+    "18": "Mikrofon",
+    "19": "Hava Durumu",
+    "20": "Pencereleri Gör",
+    "c1": "Yeni Sekme",
+    "c2": "Sekme Kapat",
+    "c3": "Yenile",
+    "c4": "Sekme Değiştir",
+    "c5": "Geri Git",
+    "s1": "Önceki",
+    "s2": "Oynat/Dur",
+    "s3": "Sonraki",
+    "s4": "Spotify Ara",
+    "a1": "Terminal",
+    "a2": "Kaydet",
+    "a3": "Format",
+    "a4": "Dosya Git",
+    "a5": "Çalıştır"
   },
   "command": {
     "title": "KOMUT",
@@ -144,7 +196,10 @@
     "initializing": "Başlatılıyor...",
     "no_ip": "IP Yok",
     "touchpad_active": "Touchpad Aktif",
-    "touchpad_desc": "İki parmak ile kaydırın, tek parmak ile taşıyın"
+    "touchpad_desc": "İki parmak ile kaydırın, tek parmak ile taşıyın",
+    "left_click": "SOL TIK",
+    "right_click": "SAĞ TIK",
+    "gesture_hint": "Tek Tık: Sol • 2 Parmak: Sağ Tık & Kaydırma"
   },
   "window_manager": {
     "title": "Pencere Yönetimi"
@@ -194,12 +249,16 @@
     "files_to_send": "GÖNDERİLECEK DOSYALAR ({{count}})",
     "send_new": "Yeni Dosyalar Gönder",
     "select": "Dosyaları Seçin",
-    "send": "Gönder"
+    "send": "Gönder",
+    "permission_title": "İzin Gerekli",
+    "permission_desc": "Galeriye erişim izni vermeniz gerekiyor.",
+    "pick_err": "Fotoğraf seçilemedi"
   },
   "screenshot": {
     "title": "EKRAN",
     "loading": "Görüntü alınıyor...",
     "empty": "Henüz görüntü alınmadı",
+    "empty_sub": "Ekran görüntüsü almak için aşağıdaki butona basın",
     "button": "Yeni Görüntü Al"
   },
   "statistics": {
@@ -249,7 +308,11 @@
     "aborted": "İptal Edildi",
     "abort_success": "Kapanma zamanlayıcısı başarıyla iptal edildi.",
     "abort_err": "İptal komutu başarısız.",
-    "abort_send_err": "İptal komutu gönderilemedi."
+    "abort_send_err": "İptal komutu gönderilemedi.",
+    "est_shutdown": "Tahmini Kapanış: ",
+    "min_short": "dk",
+    "hour_short": "saat",
+    "hours_min_short": "{{h}} saat {{m}} dk"
   },
   "modes": {
     "title": "MODLAR",

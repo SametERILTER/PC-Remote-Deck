@@ -212,7 +212,7 @@ const HomeScreen = ({ navigation }) => {
 
                     <View style={styles.heroFooter}>
                         <Octicons name="apps" size={12} color="#7E8492" style={{ marginRight: 6 }} />
-                        <Text style={styles.heroFooterText}>Özelleştirilebilir tuş panelleri ve kısayollar</Text>
+                        <Text style={styles.heroFooterText}>{t('home.deck_footer')}</Text>
                     </View>
                 </TouchableOpacity>
 

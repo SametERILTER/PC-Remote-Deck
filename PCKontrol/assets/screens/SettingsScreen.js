@@ -5,7 +5,7 @@ import { FontAwesome5, Octicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ALL_DECK_BUTTONS, DEFAULT_DECK_IDS } from '../../constants';
+import { ALL_DECK_BUTTONS, DEFAULT_DECK_IDS, getDeckBtnTitle } from '../../constants';
 
 const PRESET_KEYS = [
     { label: 'CTRL', value: '^' },
@@ -444,7 +444,7 @@ const SettingsScreen = () => {
                                         <View style={[styles.iconContainer, { backgroundColor: '#27282F' }]}>
                                             <FontAwesome5 name={item.icon} size={18} color={item.color || '#E2E8F0'} />
                                         </View>
-                                        <Text style={styles.itemName} numberOfLines={1}>{t(item.title)}</Text>
+                                        <Text style={styles.itemName} numberOfLines={1}>{getDeckBtnTitle(item, t)}</Text>
                                         <View style={styles.removeBadge}>
                                             <FontAwesome5 name="minus" size={10} color="#FFF" />
                                         </View>
@@ -465,7 +465,7 @@ const SettingsScreen = () => {
                                         <View style={[styles.iconContainer, { backgroundColor: '#27282F' }]}>
                                             <FontAwesome5 name={item.icon} size={18} color={item.color || '#E2E8F0'} />
                                         </View>
-                                        <Text style={styles.itemName} numberOfLines={1}>{t(item.title)}</Text>
+                                        <Text style={styles.itemName} numberOfLines={1}>{getDeckBtnTitle(item, t)}</Text>
                                         <View style={styles.addBadge}>
                                             <FontAwesome5 name="plus" size={10} color="#FFF" />
                                         </View>

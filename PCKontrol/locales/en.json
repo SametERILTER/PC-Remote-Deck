@@ -32,7 +32,8 @@
     "local_network": "Local Network (WLAN)",
     "status": "Status",
     "status_connected": "Connected",
-    "status_disconnected": "Disconnected"
+    "status_disconnected": "Disconnected",
+    "deck_footer": "Customizable key panels and shortcuts"
   },
   "settings": {
     "title": "SETTINGS",
@@ -110,7 +111,23 @@
     "create": "CREATE",
     "sel_app_title": "SELECT APP",
     "loading_apps": "Fetching Installed Apps...",
-    "loading_btn": "Loading..."
+    "loading_btn": "Loading...",
+    "active_btns": "Active Buttons",
+    "other_btns": "Available Buttons",
+    "new_btn_title": "CREATE CUSTOM BUTTON",
+    "btn_name": "Button Name",
+    "name_ph": "e.g. Visual Studio, Spotify...",
+    "select_icon": "Select Icon",
+    "select_color": "Select Color",
+    "custom_img": "Custom Image (Optional)",
+    "change_img": "Change Image",
+    "pick_img": "Pick Image",
+    "type_windows": "Windows App",
+    "action_detail": "Action Detail",
+    "path_help": "Enter the full path of the file, folder or program you want to run.",
+    "cmd_help": "Enter the command or script to execute in terminal.",
+    "keys_help": "Enter keyboard shortcut combination (e.g. ^c, %{F4}, ^+s).",
+    "app_help": "Select one of the modern Windows applications installed on your PC."
   },
   "deck": {
     "unknown_song": "Unknown Song",
@@ -120,6 +137,41 @@
     "lock_failed": "Failed to lock PC.",
     "conn_info": "Connection Info",
     "windows": "Windows"
+  },
+  "deck_btn": {
+    "1": "Vol +",
+    "2": "Vol -",
+    "3": "Mute",
+    "4": "Play/Pause",
+    "5": "Next",
+    "6": "Calculator",
+    "7": "Google",
+    "8": "YouTube",
+    "9": "Spotify",
+    "10": "Close Window",
+    "11": "Chrome",
+    "13": "Notepad",
+    "14": "Lock PC",
+    "15": "Switch Window",
+    "16": "Desktop",
+    "17": "Task Manager",
+    "18": "Microphone",
+    "19": "Weather",
+    "20": "Show Windows",
+    "c1": "New Tab",
+    "c2": "Close Tab",
+    "c3": "Refresh",
+    "c4": "Switch Tab",
+    "c5": "Go Back",
+    "s1": "Previous",
+    "s2": "Play/Pause",
+    "s3": "Next",
+    "s4": "Search Spotify",
+    "a1": "Terminal",
+    "a2": "Save All",
+    "a3": "Format",
+    "a4": "Find File",
+    "a5": "Run"
   },
   "command": {
     "title": "COMMAND",
@@ -144,7 +196,10 @@
     "initializing": "Initializing...",
     "no_ip": "No IP",
     "touchpad_active": "Touchpad Active",
-    "touchpad_desc": "Scroll with two fingers, move with one finger"
+    "touchpad_desc": "Scroll with two fingers, move with one finger",
+    "left_click": "LEFT CLICK",
+    "right_click": "RIGHT CLICK",
+    "gesture_hint": "Single Tap: Left • 2 Fingers: Right Click & Scroll"
   },
   "window_manager": {
     "title": "Window Management"
@@ -194,12 +249,16 @@
     "files_to_send": "FILES TO SEND ({{count}})",
     "send_new": "Send New Files",
     "select": "Select Files",
-    "send": "Send"
+    "send": "Send",
+    "permission_title": "Permission Required",
+    "permission_desc": "You need to grant permission to access the gallery.",
+    "pick_err": "Failed to pick photo"
   },
   "screenshot": {
     "title": "SCREEN",
     "loading": "Taking screenshot...",
     "empty": "No screenshot taken yet",
+    "empty_sub": "Press the button below to capture a screenshot",
     "button": "Take New Screenshot"
   },
   "statistics": {
@@ -249,7 +308,11 @@
     "aborted": "Aborted",
     "abort_success": "Shutdown timer aborted successfully.",
     "abort_err": "Abort command failed.",
-    "abort_send_err": "Failed to send abort command."
+    "abort_send_err": "Failed to send abort command.",
+    "est_shutdown": "Estimated Shutdown: ",
+    "min_short": "min",
+    "hour_short": "hour",
+    "hours_min_short": "{{h}}h {{m}}m"
   },
   "modes": {
     "title": "MODES",

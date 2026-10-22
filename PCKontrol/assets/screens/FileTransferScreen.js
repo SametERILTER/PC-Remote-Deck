@@ -77,7 +77,7 @@ const FileTransferScreen = ({ navigation }) => {
         try {
             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (status !== 'granted') {
-                Alert.alert('İzin Gerekli', 'Galeriye erişim izni vermeniz gerekiyor.');
+                Alert.alert(t('file_transfer.permission_title'), t('file_transfer.permission_desc'));
                 return;
             }
 
@@ -100,7 +100,7 @@ const FileTransferScreen = ({ navigation }) => {
             }
         } catch (error) {
             console.error("Fotoğraf seçme hatası", error);
-            Alert.alert(t('deck.error'), 'Fotoğraf seçilemedi');
+            Alert.alert(t('deck.error'), t('file_transfer.pick_err'));
         }
     };
 

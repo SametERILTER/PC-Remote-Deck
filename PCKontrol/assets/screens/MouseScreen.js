@@ -453,7 +453,7 @@ const MouseScreen = ({ navigation }) => {
                     <View style={styles.watermarkContainer} pointerEvents="none">
                         <FontAwesome5 name="mouse" size={38} color="#9CA0AC" style={styles.watermarkIcon} />
                         <Text style={styles.watermarkTitle}>{t('mouse.touchpad_active') || 'Dokunmatik Yüzey'}</Text>
-                        <Text style={styles.watermarkSub}>Tek Tık: Sol • 2 Parmak: Sağ Tık & Kaydırma</Text>
+                        <Text style={styles.watermarkSub}>{t('mouse.gesture_hint')}</Text>
                     </View>
 
                     {/* 2. Statik Arka Plan Nokta Izgarası (Silüetin Üzerinden Geçen Hafif Izgara) */}
@@ -494,7 +494,7 @@ const MouseScreen = ({ navigation }) => {
                         activeOpacity={0.65}
                     >
                         <FontAwesome5 name="mouse" size={14} color="#9CA0AC" style={{ marginRight: 8 }} />
-                        <Text style={styles.clickButtonText}>SOL TIK</Text>
+                        <Text style={styles.clickButtonText}>{t('mouse.left_click')}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -502,7 +502,7 @@ const MouseScreen = ({ navigation }) => {
                         onPress={() => sendMouseClick('right')}
                         activeOpacity={0.65}
                     >
-                        <Text style={styles.clickButtonText}>SAĞ TIK</Text>
+                        <Text style={styles.clickButtonText}>{t('mouse.right_click')}</Text>
                         <FontAwesome5 name="mouse" size={14} color="#9CA0AC" style={{ marginLeft: 8 }} />
                     </TouchableOpacity>
                 </View>
