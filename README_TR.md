@@ -1,4 +1,8 @@
-# PCKontrol - Uzaktan Bilgisayar Kontrol Sistemi
+# PC Kontrol - Uzaktan Bilgisayar Kontrol Sistemi
+
+<p align="center">
+  <img src="PCKontrol/screenshots/87ac75ce-376e-4599-9cbb-55f16c598512.jpeg" width="300" />
+</p>
 
 [English Version (README.md)](README.md)
 
@@ -9,6 +13,23 @@ PCKontrol, modern yazılım teknolojileri kullanarak Windows işletim sistemli b
 Sistem iki temel parçadan oluşmaktadır:
 1. Windows işletim sistemi üzerinde çalışan ve düşük sistem kaynağı tüketen Go dilinde yazılmış bir sunucu (Backend).
 2. React Native ve Expo ile geliştirilmiş, hem Android hem de iOS cihazlarda çalışabilen modern bir mobil uygulama.
+
+## Ekran Görüntüleri
+
+<div align="center">
+  <p align="center">
+    <img src="PCKontrol/screenshots/29fc7c93-4f01-4c5e-b55b-61b640749b5c.jpeg" width="250" />
+    <img src="PCKontrol/screenshots/ebe33967-481d-4679-a9af-8b46237308a0.jpeg" width="250" />
+  </p>
+  <p align="center">
+    <img src="PCKontrol/screenshots/07e57de3-b0ef-41a3-90ae-7ce646f5443f.jpeg" width="250" />
+    <img src="PCKontrol/screenshots/27291ebd-8dae-482c-8756-eae4f4c89848.jpeg" width="250" />
+  </p>
+  <p align="center">
+    <img src="PCKontrol/screenshots/d8804f8c-5cb7-4643-aafb-c548d563b316.jpeg" width="250" />
+    <img src="PCKontrol/screenshots/e60c3939-83d6-45da-8e51-230c2e38d357.jpeg" width="250" />
+  </p>
+</div>
 
 ## Detaylı Özellikler
 
