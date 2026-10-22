@@ -226,6 +226,11 @@ const StatisticsScreen = ({ navigation }) => {
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>{t('statistics.title')}</Text>
                 
+                <View style={[styles.statusPill, { marginLeft: 14 }]}>
+                    <View style={[styles.statusDot, { backgroundColor: baseUrl ? '#22C55E' : '#EF4444' }]} />
+                    <Text style={styles.statusText}>{baseUrl ? (t('home.status_connected') || 'Bağlı') : (t('home.status_disconnected') || 'Bağlantı Yok')}</Text>
+                </View>
+
                 <View style={{ flex: 1 }} />
                 
                 <TouchableOpacity 
@@ -313,6 +318,25 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontFamily: 'PlusJakartaSans_700Bold',
         letterSpacing: -0.3,
+    },
+    statusPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#1E1F24',
+        paddingHorizontal: 12,
+        height: 36,
+        borderRadius: 10,
+        gap: 8,
+    },
+    statusDot: {
+        width: 7,
+        height: 7,
+        borderRadius: 3.5,
+    },
+    statusText: {
+        fontSize: 12,
+        fontFamily: 'PlusJakartaSans_500Medium',
+        color: '#9CA0AC',
     },
     listWrapper: {
         flex: 1,

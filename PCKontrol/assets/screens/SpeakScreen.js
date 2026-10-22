@@ -73,21 +73,29 @@ const SpeakScreen = ({ navigation }) => {
 
             {/* Üst Başlık */}
             <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) + 20, paddingBottom: 16 }]}>
-                <TouchableOpacity 
-                    onPress={() => navigation.goBack()} 
-                    style={styles.backButton}
-                    activeOpacity={0.7}
-                >
-                    <FontAwesome5 name="chevron-left" size={15} color="#E2E8F0" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>{t('speak.title')}</Text>
-                <TouchableOpacity 
-                    onPress={() => setIsVolModalVisible(true)} 
-                    style={styles.volButton}
-                    activeOpacity={0.7}
-                >
-                    <FontAwesome5 name="volume-up" size={15} color="#E2E8F0" />
-                </TouchableOpacity>
+                <View style={styles.headerLeft}>
+                    <TouchableOpacity 
+                        onPress={() => navigation.goBack()} 
+                        style={styles.backButton}
+                        activeOpacity={0.7}
+                    >
+                        <FontAwesome5 name="chevron-left" size={15} color="#E2E8F0" />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>{t('speak.title')}</Text>
+                </View>
+                <View style={styles.headerRight}>
+                    <View style={styles.statusPill}>
+                        <View style={[styles.statusDot, { backgroundColor: ipAddress ? '#22C55E' : '#EF4444' }]} />
+                        <Text style={styles.statusText}>{ipAddress ? (t('home.status_connected') || 'Bağlı') : (t('home.status_disconnected') || 'Bağlantı Yok')}</Text>
+                    </View>
+                    <TouchableOpacity 
+                        onPress={() => setIsVolModalVisible(true)} 
+                        style={styles.volButton}
+                        activeOpacity={0.7}
+                    >
+                        <FontAwesome5 name="volume-up" size={15} color="#E2E8F0" />
+                    </TouchableOpacity>
+                </View>
             </View>
 
             <KeyboardAvoidingView
@@ -231,6 +239,35 @@ const styles = StyleSheet.create({
         backgroundColor: '#1E1F24',
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 14,
+    },
+    headerRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    statusPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#1E1F24',
+        paddingHorizontal: 12,
+        height: 36,
+        borderRadius: 10,
+        gap: 8,
+    },
+    statusDot: {
+        width: 7,
+        height: 7,
+        borderRadius: 3.5,
+    },
+    statusText: {
+        fontSize: 12,
+        fontFamily: 'PlusJakartaSans_500Medium',
+        color: '#9CA0AC',
     },
     headerTitle: {
         color: '#FFFFFF',

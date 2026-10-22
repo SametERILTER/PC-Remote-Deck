@@ -52,15 +52,20 @@ const ClipboardScreen = ({ navigation }) => {
         <View style={styles.container}>
             <StatusBar style="light" />
             <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) + 20, paddingBottom: 16 }]}>
-                <TouchableOpacity 
-                    onPress={() => navigation.goBack()} 
-                    style={styles.backBtn}
-                    activeOpacity={0.7}
-                >
-                    <FontAwesome5 name="chevron-left" size={15} color="#E2E8F0" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>{t('clipboard.title')}</Text>
-                <View style={{ width: 38 }} />
+                <View style={styles.headerLeft}>
+                    <TouchableOpacity 
+                        onPress={() => navigation.goBack()} 
+                        style={styles.backBtn}
+                        activeOpacity={0.7}
+                    >
+                        <FontAwesome5 name="chevron-left" size={15} color="#E2E8F0" />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>{t('clipboard.title')}</Text>
+                </View>
+                <View style={styles.statusPill}>
+                    <View style={[styles.statusDot, { backgroundColor: baseUrl ? '#22C55E' : '#EF4444' }]} />
+                    <Text style={styles.statusText}>{baseUrl ? (t('home.status_connected') || 'Bağlı') : (t('home.status_disconnected') || 'Bağlantı Yok')}</Text>
+                </View>
             </View>
 
             <KeyboardAvoidingView 
@@ -121,6 +126,30 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontFamily: 'PlusJakartaSans_700Bold',
         letterSpacing: -0.3,
+    },
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 14,
+    },
+    statusPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#1E1F24',
+        paddingHorizontal: 12,
+        height: 36,
+        borderRadius: 10,
+        gap: 8,
+    },
+    statusDot: {
+        width: 7,
+        height: 7,
+        borderRadius: 3.5,
+    },
+    statusText: {
+        fontSize: 12,
+        fontFamily: 'PlusJakartaSans_500Medium',
+        color: '#9CA0AC',
     },
     content: {
         flex: 1,

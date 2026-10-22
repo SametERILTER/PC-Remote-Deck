@@ -236,6 +236,11 @@ const ScreenShotScreen = ({ navigation }) => {
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>{t('screenshot.title')}</Text>
 
+                <View style={styles.statusPill}>
+                    <View style={[styles.statusDot, { backgroundColor: baseUrl ? '#22C55E' : '#EF4444' }]} />
+                    <Text style={styles.statusText}>{baseUrl ? (t('home.status_connected') || 'Bağlı') : (t('home.status_disconnected') || 'Bağlantı Yok')}</Text>
+                </View>
+
                 {currentZoomLevel > 1 && (
                     <View style={styles.zoomBadge}>
                         <Text style={styles.zoomBadgeText}>{currentZoomLevel}x</Text>
@@ -368,11 +373,31 @@ const styles = StyleSheet.create({
         backgroundColor: '#27282F',
         justifyContent: 'center',
         alignItems: 'center',
+        marginRight: 4,
     },
     headerTitle: {
         fontFamily: 'PlusJakartaSans_700Bold',
         fontSize: 14,
         color: '#FFFFFF',
+    },
+    statusPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#1E1F24',
+        paddingHorizontal: 10,
+        height: 28,
+        borderRadius: 8,
+        gap: 6,
+    },
+    statusDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+    },
+    statusText: {
+        fontSize: 11,
+        fontFamily: 'PlusJakartaSans_500Medium',
+        color: '#9CA0AC',
     },
     zoomBadge: {
         backgroundColor: '#38BDF8',
