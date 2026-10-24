@@ -161,6 +161,9 @@ const DeckButton = ({ item, onPress }) => {
     });
 
     const baseColor = getDarkerColor(item.color);
+    const title = getDeckBtnTitle(item, t);
+    const hasTitle = Boolean(title && title.trim().length > 0);
+    const isCover = item.imageUri && item.imageFit === 'cover';
 
     return (
         <TouchableOpacity
@@ -180,20 +183,57 @@ const DeckButton = ({ item, onPress }) => {
                         transform: [{ translateY }, { scale }],
                     },
                 ]}>
-                    {/* Üstte hafif 3D Işık Yansıması */}
-                    <View style={styles.deckBtnHighlight} pointerEvents="none" />
-
                     {item.imageUri ? (
-                        <Image source={{ uri: item.imageUri }} style={styles.deckBtnImage} />
+                        isCover ? (
+                            <>
+                                <Image
+                                    source={{ uri: item.imageUri }}
+                                    style={styles.deckBtnImageCover}
+                                    resizeMode="cover"
+                                />
+                                <View style={styles.deckBtnHighlight} pointerEvents="none" />
+                                {hasTitle && (
+                                    <View style={styles.deckBtnLabelCoverBadge}>
+                                        <Text style={styles.deckBtnLabelCover} numberOfLines={1}>
+                                            {title}
+                                        </Text>
+                                    </View>
+                                )}
+                            </>
+                        ) : (
+                            <>
+                                <View style={styles.deckBtnHighlight} pointerEvents="none" />
+                                <Image
+                                    source={{ uri: item.imageUri }}
+                                    style={[
+                                        styles.deckBtnImage,
+                                        !hasTitle && styles.deckBtnImageNoTitle,
+                                    ]}
+                                    resizeMode="contain"
+                                />
+                                {hasTitle && (
+                                    <Text style={styles.deckBtnLabel} numberOfLines={2}>
+                                        {title}
+                                    </Text>
+                                )}
+                            </>
+                        )
                     ) : (
-                        <DeckIcon
-                            library={item.library || 'FontAwesome5'}
-                            name={item.icon}
-                            size={23}
-                            color="#FFFFFF"
-                        />
+                        <>
+                            <View style={styles.deckBtnHighlight} pointerEvents="none" />
+                            <DeckIcon
+                                library={item.library || 'FontAwesome5'}
+                                name={item.icon}
+                                size={23}
+                                color="#FFFFFF"
+                            />
+                            {hasTitle && (
+                                <Text style={styles.deckBtnLabel} numberOfLines={2}>
+                                    {title}
+                                </Text>
+                            )}
+                        </>
                     )}
-                    <Text style={styles.deckBtnLabel} numberOfLines={2}>{getDeckBtnTitle(item, t)}</Text>
                 </Animated.View>
             </View>
         </TouchableOpacity>
@@ -1171,12 +1211,42 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255, 255, 255, 0.1)',
         borderTopLeftRadius: 18,
         borderTopRightRadius: 18,
+        zIndex: 2,
     },
     deckBtnImage: {
-        width: 32,
-        height: 32,
-        borderRadius: 8,
-        marginBottom: 4,
+        width: 56,
+        height: 56,
+        borderRadius: 12,
+        marginBottom: 3,
+    },
+    deckBtnImageNoTitle: {
+        width: 74,
+        height: 74,
+        borderRadius: 16,
+        marginBottom: 0,
+    },
+    deckBtnImageCover: {
+        ...StyleSheet.absoluteFillObject,
+        width: '100%',
+        height: '100%',
+    },
+    deckBtnLabelCoverBadge: {
+        position: 'absolute',
+        bottom: 5,
+        left: 6,
+        right: 6,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 6,
+        alignItems: 'center',
+        zIndex: 3,
+    },
+    deckBtnLabelCover: {
+        color: '#FFFFFF',
+        fontFamily: 'PlusJakartaSans_700Bold',
+        fontSize: 10,
+        textAlign: 'center',
     },
     deckBtnLabel: {
         color: '#FFFFFF',

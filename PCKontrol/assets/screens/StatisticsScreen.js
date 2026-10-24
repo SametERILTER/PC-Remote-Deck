@@ -50,12 +50,10 @@ const StatisticsScreen = ({ navigation }) => {
         const loadSettings = async () => {
             try {
                 const savedIP = await AsyncStorage.getItem('@pc_ip_address');
-                const savedPort = await AsyncStorage.getItem('@pc_port');
+                const savedPort = (await AsyncStorage.getItem('@pc_port')) || '9090';
                 
-                if (savedIP && savedPort) {
+                if (savedIP) {
                     setBaseUrl(`http://${savedIP.trim()}:${savedPort.trim()}`);
-                } else if (savedIP) {
-                    setBaseUrl(`http://${savedIP.trim()}`);
                 }
             } catch (error) {
                 console.log('Error loading settings:', error);

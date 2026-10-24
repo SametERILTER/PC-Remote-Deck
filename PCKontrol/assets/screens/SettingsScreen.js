@@ -51,6 +51,7 @@ const SettingsScreen = () => {
     const [newBtnType, setNewBtnType] = useState('path'); // path, command, keys, app
     const [newBtnAction, setNewBtnAction] = useState('');
     const [newBtnImage, setNewBtnImage] = useState(null);
+    const [newBtnImageFit, setNewBtnImageFit] = useState('contain'); // contain or cover
 
     const [installedApps, setInstalledApps] = useState([]);
     const [isLoadingApps, setIsLoadingApps] = useState(false);
@@ -161,12 +162,17 @@ const SettingsScreen = () => {
             mediaTypes: ['images'],
             allowsEditing: true,
             aspect: [1, 1],
-            quality: 0.5,
+            quality: 0.9,
         });
 
-        if (!result.canceled) {
+        if (!result.canceled && result.assets && result.assets.length > 0) {
             setNewBtnImage(result.assets[0].uri);
         }
+    };
+
+    const removeImage = () => {
+        setNewBtnImage(null);
+        setNewBtnImageFit('contain');
     };
 
     const addPresetToAction = (value) => {
@@ -178,16 +184,21 @@ const SettingsScreen = () => {
     };
 
     const addCustomButton = async () => {
-        if (!newBtnTitle || !newBtnAction) {
+        if (!newBtnAction) {
+            Alert.alert(t('deck.error'), t('settings.err_empty_btn'));
+            return;
+        }
+        if (!newBtnTitle && !newBtnImage) {
             Alert.alert(t('deck.error'), t('settings.err_empty_btn'));
             return;
         }
 
         const newBtn = {
             id: `custom_${Date.now()}`,
-            title: newBtnTitle,
+            title: newBtnTitle || '',
             icon: newBtnIcon,
             imageUri: newBtnImage,
+            imageFit: newBtnImageFit,
             color: newBtnColor,
             type: newBtnType === 'app' ? 'path' : newBtnType,
             action: newBtnAction,
@@ -208,6 +219,8 @@ const SettingsScreen = () => {
 
         setNewBtnTitle('');
         setNewBtnAction('');
+        setNewBtnImage(null);
+        setNewBtnImageFit('contain');
         setIsCreateModalVisible(false);
         Alert.alert(t('power.success'), t('settings.success_btn_create'));
     };
@@ -377,10 +390,18 @@ const SettingsScreen = () => {
                             {customButtons.map((btn) => (
                                 <View key={btn.id} style={styles.customBtnItem}>
                                     <View style={[styles.customBtnIcon, { backgroundColor: btn.color }]}>
-                                        <FontAwesome5 name={btn.icon} size={15} color="white" />
+                                        {btn.imageUri ? (
+                                            <Image 
+                                                source={{ uri: btn.imageUri }} 
+                                                style={{ width: 28, height: 28, borderRadius: 6 }} 
+                                                resizeMode={btn.imageFit === 'cover' ? 'cover' : 'contain'}
+                                            />
+                                        ) : (
+                                            <FontAwesome5 name={btn.icon} size={15} color="white" />
+                                        )}
                                     </View>
                                     <View style={{ flex: 1, marginLeft: 14 }}>
-                                        <Text style={styles.customBtnTitle}>{btn.title}</Text>
+                                        <Text style={styles.customBtnTitle}>{btn.title || btn.action}</Text>
                                         <Text style={styles.customBtnSubtitle} numberOfLines={1}>{btn.action}</Text>
                                     </View>
                                     <TouchableOpacity onPress={() => deleteCustomButton(btn.id)} style={styles.deleteBtn} activeOpacity={0.7}>
@@ -417,10 +438,18 @@ const SettingsScreen = () => {
                                             return (
                                                 <View 
                                                     key={i} 
-                                                    style={[styles.deckScreenBtn, viewMode === '12' && styles.deckScreenBtn12, item && { backgroundColor: '#27282F' }]}
+                                                    style={[styles.deckScreenBtn, viewMode === '12' && styles.deckScreenBtn12, item && { backgroundColor: '#27282F', overflow: 'hidden' }]}
                                                 >
                                                     {item ? (
-                                                        <FontAwesome5 name={item.icon} size={viewMode === '12' ? 12 : 16} color={item.color || '#E2E8F0'} />
+                                                        item.imageUri ? (
+                                                            <Image 
+                                                                source={{ uri: item.imageUri }} 
+                                                                style={{ width: '100%', height: '100%', borderRadius: 4 }} 
+                                                                resizeMode="cover"
+                                                            />
+                                                        ) : (
+                                                            <FontAwesome5 name={item.icon} size={viewMode === '12' ? 12 : 16} color={item.color || '#E2E8F0'} />
+                                                        )
                                                     ) : (
                                                         <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#3A3D46' }} />
                                                     )}
@@ -441,8 +470,16 @@ const SettingsScreen = () => {
                                         onPress={() => toggleItem(item.id)}
                                         activeOpacity={0.7}
                                     >
-                                        <View style={[styles.iconContainer, { backgroundColor: '#27282F' }]}>
-                                            <FontAwesome5 name={item.icon} size={18} color={item.color || '#E2E8F0'} />
+                                        <View style={[styles.iconContainer, { backgroundColor: '#27282F', overflow: 'hidden' }]}>
+                                            {item.imageUri ? (
+                                                <Image 
+                                                    source={{ uri: item.imageUri }} 
+                                                    style={{ width: 24, height: 24, borderRadius: 6 }} 
+                                                    resizeMode={item.imageFit === 'cover' ? 'cover' : 'contain'}
+                                                />
+                                            ) : (
+                                                <FontAwesome5 name={item.icon} size={18} color={item.color || '#E2E8F0'} />
+                                            )}
                                         </View>
                                         <Text style={styles.itemName} numberOfLines={1}>{getDeckBtnTitle(item, t)}</Text>
                                         <View style={styles.removeBadge}>
@@ -462,8 +499,16 @@ const SettingsScreen = () => {
                                         onPress={() => toggleItem(item.id)}
                                         activeOpacity={0.7}
                                     >
-                                        <View style={[styles.iconContainer, { backgroundColor: '#27282F' }]}>
-                                            <FontAwesome5 name={item.icon} size={18} color={item.color || '#E2E8F0'} />
+                                        <View style={[styles.iconContainer, { backgroundColor: '#27282F', overflow: 'hidden' }]}>
+                                            {item.imageUri ? (
+                                                <Image 
+                                                    source={{ uri: item.imageUri }} 
+                                                    style={{ width: 24, height: 24, borderRadius: 6 }} 
+                                                    resizeMode={item.imageFit === 'cover' ? 'cover' : 'contain'}
+                                                />
+                                            ) : (
+                                                <FontAwesome5 name={item.icon} size={18} color={item.color || '#E2E8F0'} />
+                                            )}
                                         </View>
                                         <Text style={styles.itemName} numberOfLines={1}>{getDeckBtnTitle(item, t)}</Text>
                                         <View style={styles.addBadge}>
@@ -499,12 +544,14 @@ const SettingsScreen = () => {
                         <ScrollView showsVerticalScrollIndicator={false}>
                             {/* Buton İsmi */}
                             <View style={styles.inputGroup}>
-                                <Text style={styles.label}>{t('settings.btn_name')}</Text>
+                                <Text style={styles.label}>
+                                    {newBtnImage ? t('settings.btn_name_optional') : t('settings.btn_name')}
+                                </Text>
                                 <TextInput 
                                     style={styles.input} 
                                     value={newBtnTitle} 
                                     onChangeText={setNewBtnTitle} 
-                                    placeholder={t('settings.name_ph')} 
+                                    placeholder={newBtnImage ? `${t('settings.name_ph')} (${t('settings.btn_name_optional')})` : t('settings.name_ph')} 
                                     placeholderTextColor="#555966" 
                                 />
                             </View>
@@ -544,16 +591,68 @@ const SettingsScreen = () => {
                             {/* Resim Ekleme */}
                             <View style={styles.inputGroup}>
                                 <Text style={styles.label}>{t('settings.custom_img')}</Text>
-                                <TouchableOpacity style={styles.imagePickerBtn} onPress={pickImage} activeOpacity={0.7}>
-                                    {newBtnImage ? (
-                                        <Image source={{ uri: newBtnImage }} style={styles.pickedImage} />
-                                    ) : (
+                                {newBtnImage ? (
+                                    <View style={styles.imageSelectedContainer}>
+                                        <View style={[styles.imageSelectedPreview, { backgroundColor: newBtnColor }]}>
+                                            <Image 
+                                                source={{ uri: newBtnImage }} 
+                                                style={newBtnImageFit === 'cover' ? styles.imagePreviewCover : styles.imagePreviewContain} 
+                                                resizeMode={newBtnImageFit === 'cover' ? 'cover' : 'contain'}
+                                            />
+                                            {newBtnTitle ? (
+                                                <Text style={styles.imagePreviewLabel} numberOfLines={1}>
+                                                    {newBtnTitle}
+                                                </Text>
+                                            ) : null}
+                                        </View>
+                                        <View style={styles.imageSelectedActions}>
+                                            <TouchableOpacity style={styles.imageActionBtn} onPress={pickImage} activeOpacity={0.7}>
+                                                <FontAwesome5 name="sync-alt" size={12} color="#FFFFFF" />
+                                                <Text style={styles.imageActionBtnText}>{t('settings.change_img')}</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity style={[styles.imageActionBtn, styles.imageActionBtnDanger]} onPress={removeImage} activeOpacity={0.7}>
+                                                <FontAwesome5 name="trash-alt" size={12} color="#EF4444" />
+                                                <Text style={[styles.imageActionBtnText, { color: '#EF4444' }]}>{t('settings.rm_img')}</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                ) : (
+                                    <TouchableOpacity style={styles.imagePickerBtn} onPress={pickImage} activeOpacity={0.7}>
                                         <FontAwesome5 name="image" size={16} color="#A0A5AF" />
-                                    )}
-                                    <Text style={styles.imagePickerText}>
-                                        {newBtnImage ? t('settings.change_img') : t('settings.pick_img')}
-                                    </Text>
-                                </TouchableOpacity>
+                                        <Text style={styles.imagePickerText}>
+                                            {t('settings.pick_img')}
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
+
+                                {/* Resim Görünüm Modu (İkon veya Tam Kapla) */}
+                                {newBtnImage ? (
+                                    <View style={{ marginTop: 10 }}>
+                                        <Text style={[styles.label, { fontSize: 12, marginBottom: 6 }]}>{t('settings.fit_mode')}</Text>
+                                        <View style={styles.typeSelector}>
+                                            <TouchableOpacity 
+                                                style={[styles.typeTab, newBtnImageFit === 'contain' && styles.typeTabActive]}
+                                                onPress={() => setNewBtnImageFit('contain')}
+                                                activeOpacity={0.7}
+                                            >
+                                                <FontAwesome5 name="image" size={12} color={newBtnImageFit === 'contain' ? '#38BDF8' : '#A0A5AF'} style={{ marginRight: 6 }} />
+                                                <Text style={[styles.typeTabText, newBtnImageFit === 'contain' && styles.typeTabTextActive]}>
+                                                    {t('settings.fit_icon')}
+                                                </Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity 
+                                                style={[styles.typeTab, newBtnImageFit === 'cover' && styles.typeTabActive]}
+                                                onPress={() => setNewBtnImageFit('cover')}
+                                                activeOpacity={0.7}
+                                            >
+                                                <FontAwesome5 name="expand" size={12} color={newBtnImageFit === 'cover' ? '#38BDF8' : '#A0A5AF'} style={{ marginRight: 6 }} />
+                                                <Text style={[styles.typeTabText, newBtnImageFit === 'cover' && styles.typeTabTextActive]}>
+                                                    {t('settings.fit_cover')}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                ) : null}
                             </View>
 
                             {/* Eylem Türü */}
@@ -1169,9 +1268,71 @@ const styles = StyleSheet.create({
         fontFamily: 'PlusJakartaSans_600SemiBold',
     },
     pickedImage: {
-        width: 28,
-        height: 28,
+        width: 32,
+        height: 32,
         borderRadius: 8,
+    },
+    imageSelectedContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#1E1F24',
+        padding: 12,
+        borderRadius: 14,
+        gap: 14,
+        borderWidth: 1,
+        borderColor: '#2D3039',
+    },
+    imageSelectedPreview: {
+        width: 66,
+        height: 66,
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+    },
+    imagePreviewCover: {
+        ...StyleSheet.absoluteFillObject,
+        width: '100%',
+        height: '100%',
+    },
+    imagePreviewContain: {
+        width: 48,
+        height: 48,
+        borderRadius: 8,
+    },
+    imagePreviewLabel: {
+        position: 'absolute',
+        bottom: 3,
+        left: 2,
+        right: 2,
+        backgroundColor: 'rgba(0, 0, 0, 0.65)',
+        color: '#FFFFFF',
+        fontSize: 8.5,
+        fontFamily: 'PlusJakartaSans_700Bold',
+        textAlign: 'center',
+        borderRadius: 4,
+        paddingHorizontal: 2,
+    },
+    imageSelectedActions: {
+        flex: 1,
+        gap: 8,
+    },
+    imageActionBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#27282F',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        gap: 8,
+    },
+    imageActionBtnDanger: {
+        backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    },
+    imageActionBtnText: {
+        color: '#FFFFFF',
+        fontSize: 12,
+        fontFamily: 'PlusJakartaSans_600SemiBold',
     },
     presetsScroll: {
         marginTop: 8,

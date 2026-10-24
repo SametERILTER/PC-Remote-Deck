@@ -35,8 +35,8 @@ const KeyboardScreen = ({ navigation }) => {
     const loadSettings = async () => {
         try {
             const savedIP = await AsyncStorage.getItem('@pc_ip_address');
-            const savedPort = await AsyncStorage.getItem('@pc_port');
-            if (savedIP && savedPort) {
+            const savedPort = (await AsyncStorage.getItem('@pc_port')) || '9090';
+            if (savedIP) {
                 setBaseUrl(`http://${savedIP.trim()}:${savedPort.trim()}`);
             }
         } catch (e) {

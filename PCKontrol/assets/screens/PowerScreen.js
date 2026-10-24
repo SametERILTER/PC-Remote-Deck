@@ -12,7 +12,7 @@ const PowerScreen = ({ navigation }) => {
     const insets = useSafeAreaInsets();
     const { t } = useTranslation();
     const [ipAddress, setIpAddress] = useState('');
-    const [port, setPort] = useState('5000');
+    const [port, setPort] = useState('9090');
     const [minutes, setMinutes] = useState('60');
 
     const adjustMinutes = (delta) => {
@@ -50,9 +50,9 @@ const PowerScreen = ({ navigation }) => {
     const loadConnection = async () => {
         try {
             const savedIP = await AsyncStorage.getItem('@pc_ip_address');
-            const savedPort = await AsyncStorage.getItem('@pc_port');
-            if (savedIP) setIpAddress(savedIP);
-            if (savedPort) setPort(savedPort);
+            const savedPort = (await AsyncStorage.getItem('@pc_port')) || '9090';
+            if (savedIP) setIpAddress(savedIP.trim());
+            setPort(savedPort.trim());
         } catch (e) {
             console.error('Bağlantı bilgileri yüklenemedi', e);
         }
