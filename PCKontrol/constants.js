@@ -25,6 +25,8 @@ export const ALL_DECK_BUTTONS = [
     { id: 'c3', title: 'Yenile', icon: 'redo', library: 'FontAwesome5', color: '#EA4335', endpoint: '/chrome-refresh' },
     { id: 'c4', title: 'Sekme Değiştir', icon: 'clone', library: 'FontAwesome5', color: '#EA4335', endpoint: '/chrome-next-tab' },
     { id: 'c5', title: 'Geri Git', icon: 'arrow-left', library: 'FontAwesome5', color: '#EA4335', endpoint: '/chrome-back' },
+    { id: 'c6', title: 'Gizli Sekme', icon: 'user-secret', library: 'FontAwesome5', color: '#EA4335', endpoint: '/chrome-incognito' },
+    { id: 'c7', title: 'Önceki Sekme', icon: 'history', library: 'FontAwesome5', color: '#EA4335', endpoint: '/chrome-prev-tab' },
 
     // Spotify Özel Butonlar
     { id: 's1', title: 'Önceki', icon: 'step-backward', library: 'FontAwesome5', color: '#1DB954', endpoint: '/prev' },
