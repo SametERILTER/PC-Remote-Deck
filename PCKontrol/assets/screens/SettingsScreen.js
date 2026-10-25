@@ -200,7 +200,7 @@ const SettingsScreen = () => {
             imageUri: newBtnImage,
             imageFit: newBtnImageFit,
             color: newBtnColor,
-            type: newBtnType === 'app' ? 'path' : newBtnType,
+            type: newBtnType,
             action: newBtnAction,
             isCustom: true,
             library: 'FontAwesome5'

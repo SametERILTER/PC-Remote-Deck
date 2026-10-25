@@ -616,6 +616,7 @@ const DeckScreen = ({ navigation }) => {
         let url = '';
         if (item.isCustom) {
             if (item.type === 'path') url = `${baseUrl}/open-path?path=${encodeURIComponent(item.action)}`;
+            else if (item.type === 'app') url = `${baseUrl}/open-app?id=${encodeURIComponent(item.action)}`;
             else if (item.type === 'command') url = `${baseUrl}/run-command?cmd=${encodeURIComponent(item.action)}`;
             else if (item.type === 'keys') url = `${baseUrl}/press-combo?keys=${encodeURIComponent(item.action)}`;
         } else {

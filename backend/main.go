@@ -601,7 +601,43 @@ func main() {
 	mux.HandleFunc("/open-path", func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Query().Get("path")
 		if path != "" {
-			err := exec.Command("cmd", "/C", "start", "", path).Run()
+			var err error
+			isUWP := strings.HasPrefix(strings.ToLower(path), "shell:appsfolder\\") || strings.Contains(path, "!")
+			if !isUWP {
+				if _, statErr := os.Stat(path); os.IsNotExist(statErr) && !strings.Contains(path, ":\\") && !strings.Contains(path, ":/") && !strings.HasPrefix(path, "http") {
+					isUWP = true
+				}
+			}
+
+			if isUWP {
+				appPath := path
+				if !strings.HasPrefix(strings.ToLower(appPath), "shell:appsfolder\\") {
+					appPath = "shell:AppsFolder\\" + appPath
+				}
+				err = exec.Command("cmd", "/C", "start", "", "explorer.exe", appPath).Run()
+			} else {
+				err = exec.Command("cmd", "/C", "start", "", path).Run()
+			}
+
+			if err != nil {
+				fmt.Fprintf(w, "Hata: %s", err.Error())
+				return
+			}
+			fmt.Fprint(w, "Açıldı")
+		}
+	})
+
+	mux.HandleFunc("/open-app", func(w http.ResponseWriter, r *http.Request) {
+		appId := r.URL.Query().Get("id")
+		if appId == "" {
+			appId = r.URL.Query().Get("path")
+		}
+		if appId != "" {
+			appPath := appId
+			if !strings.HasPrefix(strings.ToLower(appPath), "shell:appsfolder\\") {
+				appPath = "shell:AppsFolder\\" + appPath
+			}
+			err := exec.Command("cmd", "/C", "start", "", "explorer.exe", appPath).Run()
 			if err != nil {
 				fmt.Fprintf(w, "Hata: %s", err.Error())
 				return
