@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Animated, Alert, Modal } from 'react-native';
 import { FontAwesome5, Octicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
@@ -113,32 +114,24 @@ const HomeScreen = ({ navigation }) => {
         };
     }, [navigation]);
 
+    const topInset = Math.max(insets.top, 16);
+    const gradientHeight = topInset + 88;
+
     return (
         <View style={styles.container}>
             <StatusBar style="light" />
 
-            {/* Üst Başlık */}
-            <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) + 20, paddingBottom: 16 }]}>
-                <View style={styles.brandContainer}>
-                    <Text style={styles.brandTitle}>PCKONTROL</Text>
-                </View>
-                <TouchableOpacity 
-                    style={styles.headerActionBtn} 
-                    onPress={() => navigation.navigate('QrScanner')}
-                    activeOpacity={0.7}
-                >
-                    <FontAwesome5 name="qrcode" size={17} color="#E2E8F0" />
-                </TouchableOpacity>
-            </View>
-
-            {/* Kaydırılabilir İçerik */}
+            {/* Kaydırılabilir İçerik (Header ve gradient altından yukarı kayar) */}
             <ScrollView
                 style={styles.content}
                 showsVerticalScrollIndicator={false}
                 bounces={true}
                 contentContainerStyle={[
                     styles.scrollContent, 
-                    { paddingBottom: Math.max(insets.bottom, 16) + 100 }
+                    { 
+                        paddingTop: topInset + 68,
+                        paddingBottom: Math.max(insets.bottom, 16) + 100 
+                    }
                 ]}
             >
                 {/* Grimsi Cihaz Durum Kartı (Bordersız) */}
@@ -238,6 +231,31 @@ const HomeScreen = ({ navigation }) => {
                 </View>
             </ScrollView>
 
+            {/* Status Bar & Header Üst Gradient Overlay */}
+            <View 
+                style={[styles.headerWrapper, { height: gradientHeight }]} 
+                pointerEvents="box-none"
+            >
+                <LinearGradient
+                    colors={['#080808', '#080808', 'rgba(8, 8, 8, 0.75)', 'rgba(8, 8, 8, 0)']}
+                    locations={[0, 0.60, 0.84, 1.0]}
+                    style={StyleSheet.absoluteFillObject}
+                    pointerEvents="none"
+                />
+                <View style={[styles.headerBar, { paddingTop: topInset + 12 }]}>
+                    <View style={styles.brandContainer}>
+                        <Text style={styles.brandTitle}>PCKONTROL</Text>
+                    </View>
+                    <TouchableOpacity 
+                        style={styles.headerActionBtn} 
+                        onPress={() => navigation.navigate('QrScanner')}
+                        activeOpacity={0.7}
+                    >
+                        <FontAwesome5 name="qrcode" size={17} color="#E2E8F0" />
+                    </TouchableOpacity>
+                </View>
+            </View>
+
             {/* Bağlantı Detayı Modalı (Gerçek Bottom Sheet) */}
             <Modal
                 animationType="slide"
@@ -331,15 +349,20 @@ const styles = StyleSheet.create({
         backgroundColor: '#080808', // Siyaha yakın zemin
     },
 
-    // ── Header ────────────────────────────────────────────────────────────────
-    header: {
+    // ── Header & Status Bar Overlay ───────────────────────────────────────────
+    headerWrapper: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 20,
+        elevation: 10,
+    },
+    headerBar: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 20,
-        paddingBottom: 14,
-        backgroundColor: '#080808',
-        zIndex: 10,
     },
     brandContainer: {
         justifyContent: 'center',

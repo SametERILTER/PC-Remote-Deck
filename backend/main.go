@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 	"unsafe"
@@ -51,6 +52,35 @@ var (
 	procCloseHandle              = kernel32.NewProc("CloseHandle")
 	procGetWindowThreadProcessId = user32.NewProc("GetWindowThreadProcessId")
 	procGetForegroundWindow      = user32.NewProc("GetForegroundWindow")
+
+	procGlobalMemoryStatusEx = kernel32.NewProc("GlobalMemoryStatusEx")
+	procGetSystemTimes       = kernel32.NewProc("GetSystemTimes")
+)
+
+type MEMORYSTATUSEX struct {
+	Length               uint32
+	MemoryLoad           uint32
+	TotalPhys            uint64
+	AvailPhys            uint64
+	TotalPageFile        uint64
+	AvailPageFile        uint64
+	TotalVirtual         uint64
+	AvailVirtual         uint64
+	AvailExtendedVirtual uint64
+}
+
+type FILETIME struct {
+	LowDateTime  uint32
+	HighDateTime uint32
+}
+
+var (
+	cachedCpuName  string = "CPU"
+	cachedGpuName  string = "GPU"
+	cachedGpuTemp  string = "0"
+	cachedGpuUse   string = "0"
+	currentCpuLoad string = "0"
+	statsMutex     sync.RWMutex
 )
 
 type POINT struct {
@@ -407,10 +437,176 @@ func volumeWorker() {
 	}
 }
 
+func initCpuName() {
+	out, err := exec.Command("reg", "query", "HKLM\\HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0", "/v", "ProcessorNameString").Output()
+	if err == nil {
+		lines := strings.Split(string(out), "\n")
+		for _, line := range lines {
+			if strings.Contains(line, "ProcessorNameString") {
+				parts := strings.Split(line, "REG_SZ")
+				if len(parts) >= 2 {
+					cachedCpuName = strings.TrimSpace(parts[1])
+					return
+				}
+			}
+		}
+	}
+	cachedCpuName = "CPU"
+}
+
+func fileTimeToUint64(ft FILETIME) uint64 {
+	return (uint64(ft.HighDateTime) << 32) | uint64(ft.LowDateTime)
+}
+
+func getSystemTimes() (idle, kernel, user uint64, ok bool) {
+	var idleFt, kernelFt, userFt FILETIME
+	r1, _, _ := procGetSystemTimes.Call(
+		uintptr(unsafe.Pointer(&idleFt)),
+		uintptr(unsafe.Pointer(&kernelFt)),
+		uintptr(unsafe.Pointer(&userFt)),
+	)
+	if r1 == 0 {
+		return 0, 0, 0, false
+	}
+	return fileTimeToUint64(idleFt), fileTimeToUint64(kernelFt), fileTimeToUint64(userFt), true
+}
+
+func cpuWorker() {
+	prevIdle, prevKernel, prevUser, ok := getSystemTimes()
+	if !ok {
+		return
+	}
+	for {
+		time.Sleep(1 * time.Second)
+		curIdle, curKernel, curUser, ok := getSystemTimes()
+		if !ok {
+			continue
+		}
+		idleDelta := curIdle - prevIdle
+		kernelDelta := curKernel - prevKernel
+		userDelta := curUser - prevUser
+
+		total := kernelDelta + userDelta
+		if total > 0 {
+			busy := total - idleDelta
+			pct := float64(busy) * 100.0 / float64(total)
+			if pct < 0 {
+				pct = 0
+			} else if pct > 100 {
+				pct = 100
+			}
+			statsMutex.Lock()
+			currentCpuLoad = fmt.Sprintf("%.1f", pct)
+			statsMutex.Unlock()
+		}
+
+		prevIdle = curIdle
+		prevKernel = curKernel
+		prevUser = curUser
+	}
+}
+
+func gpuWorker() {
+	hasNvidia := true
+	for {
+		if hasNvidia {
+			out, err := exec.Command("nvidia-smi", "--query-gpu=name,temperature.gpu,utilization.gpu", "--format=csv,noheader,nounits").Output()
+			if err == nil && len(out) > 0 {
+				parts := strings.Split(strings.TrimSpace(string(out)), ",")
+				if len(parts) >= 3 {
+					statsMutex.Lock()
+					cachedGpuName = strings.TrimSpace(parts[0])
+					cachedGpuTemp = strings.TrimSpace(parts[1])
+					cachedGpuUse = strings.TrimSpace(parts[2])
+					statsMutex.Unlock()
+				}
+			} else {
+				hasNvidia = false
+			}
+		}
+		time.Sleep(3 * time.Second)
+	}
+}
+
+func getMemoryStats() (ramPercent string, ramTot string, ramUse string) {
+	var mem MEMORYSTATUSEX
+	mem.Length = uint32(unsafe.Sizeof(mem))
+	r1, _, _ := procGlobalMemoryStatusEx.Call(uintptr(unsafe.Pointer(&mem)))
+	if r1 == 0 {
+		return "0", "0", "0"
+	}
+	usedPhys := mem.TotalPhys - mem.AvailPhys
+	ramPercent = fmt.Sprintf("%.1f", float64(usedPhys)*100.0/float64(mem.TotalPhys))
+	ramTot = fmt.Sprintf("%.1f", float64(mem.TotalPhys)/(1024*1024*1024))
+	ramUse = fmt.Sprintf("%.1f", float64(usedPhys)/(1024*1024*1024))
+	return ramPercent, ramTot, ramUse
+}
+
+func getMediaInfo() string {
+	var media string
+	cb := syscall.NewCallback(func(hwnd uintptr, lparam uintptr) uintptr {
+		vis, _, _ := procIsWindowVisible.Call(hwnd)
+		if vis == 0 {
+			return 1
+		}
+
+		var pid uint32
+		procGetWindowThreadProcessId.Call(hwnd, uintptr(unsafe.Pointer(&pid)))
+		if pid == 0 {
+			return 1
+		}
+
+		hProcess, _, _ := procOpenProcess.Call(uintptr(0x0400|0x0010), 0, uintptr(pid))
+		if hProcess == 0 {
+			return 1
+		}
+		defer procCloseHandle.Call(hProcess)
+
+		var name [256]uint16
+		n, _, _ := procGetModuleBaseNameW.Call(hProcess, 0, uintptr(unsafe.Pointer(&name[0])), 256)
+		pName := ""
+		if n > 0 {
+			pName = strings.ToLower(syscall.UTF16ToString(name[:n]))
+		}
+
+		var title [512]uint16
+		tLen, _, _ := procGetWindowTextW.Call(hwnd, uintptr(unsafe.Pointer(&title[0])), 512)
+		if tLen == 0 {
+			return 1
+		}
+		tStr := syscall.UTF16ToString(title[:tLen])
+
+		if pName == "spotify.exe" {
+			if tStr != "" && tStr != "Spotify" && tStr != "Spotify Free" && tStr != "Spotify Premium" && tStr != "Default IME" && tStr != "MSCTFIME UI" {
+				media = tStr
+				return 0 // stop enumeration
+			}
+		}
+
+		if strings.HasSuffix(pName, "chrome.exe") || strings.HasSuffix(pName, "msedge.exe") || strings.HasSuffix(pName, "firefox.exe") || strings.HasSuffix(pName, "brave.exe") || strings.HasSuffix(pName, "opera.exe") {
+			if strings.Contains(tStr, " - YouTube") {
+				media = strings.ReplaceAll(tStr, " - YouTube", "")
+				return 0
+			}
+			if strings.Contains(tStr, " - Spotify") {
+				media = strings.ReplaceAll(tStr, " - Spotify", "")
+				return 0
+			}
+		}
+
+		return 1
+	})
+	procEnumWindows.Call(cb, 0)
+	return media
+}
+
 func main() {
 	port := "9090"
 	mux := http.NewServeMux()
 
+	initCpuName()
+	go cpuWorker()
+	go gpuWorker()
 	go volumeWorker()
 
 	mux.HandleFunc("/set-clipboard", func(w http.ResponseWriter, r *http.Request) {
@@ -761,77 +957,31 @@ func main() {
 	})
 
 	mux.HandleFunc("/stats", func(w http.ResponseWriter, r *http.Request) {
-		psCommand := `
-			$cpuObj = Get-CimInstance Win32_Processor | Select-Object -First 1
-			$cpuName = $cpuObj.Name
-			$cpu = $cpuObj.LoadPercentage
-
-			$mem = Get-CimInstance Win32_OperatingSystem
-			$ram = [math]::Round((($mem.TotalVisibleMemorySize - $mem.FreePhysicalMemory) / $mem.TotalVisibleMemorySize) * 100, 1)
-			$ramTot = [math]::Round($mem.TotalVisibleMemorySize / 1MB, 1)
-			$ramUse = [math]::Round(($mem.TotalVisibleMemorySize - $mem.FreePhysicalMemory) / 1MB, 1)
-
-			$gpuName = "GPU"
-			$gpuTemp = "0"
-			$gpuUse = "0"
-			try {
-				$nvidia = & nvidia-smi --query-gpu=name,temperature.gpu,utilization.gpu --format=csv,noheader
-				if ($nvidia) {
-					$gpuParts = $nvidia.Split(',')
-					if ($gpuParts.Length -ge 3) {
-						$gpuName = $gpuParts[0].Trim()
-						$gpuTemp = $gpuParts[1].Trim()
-						$gpuUse = $gpuParts[2].Replace('%', '').Trim()
-					}
-				}
-			} catch {}
-
-			$media = ""
-			$spotify = Get-Process spotify -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -and $_.MainWindowTitle -ne "Spotify" -and $_.MainWindowTitle -ne "Spotify Free" -and $_.MainWindowTitle -ne "Spotify Premium" } | Select-Object -First 1
-			if ($spotify) { 
-				$media = $spotify.MainWindowTitle 
-			} else {
-				$browsers = Get-Process chrome, msedge, firefox -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -like "* - YouTube*" -or $_.MainWindowTitle -like "* - Spotify*" } | Select-Object -First 1
-				if ($browsers) {
-					$media = $browsers.MainWindowTitle -replace " - YouTube", "" -replace " - Spotify", ""
-				}
-			}
-			Write-Output "$cpu|$ram|$media|$gpuTemp|$gpuUse|$cpuName|$ramTot|$ramUse|$gpuName"
-		`
-
 		activeApp, activeTitle := getForegroundWindowInfo()
+		ramPct, ramTot, ramUse := getMemoryStats()
+		media := getMediaInfo()
 
-		out, _ := exec.Command("powershell", "-Command", psCommand).Output()
-		outputStr := strings.TrimSpace(string(out))
-		parts := strings.Split(outputStr, "|")
+		statsMutex.RLock()
+		cpu := currentCpuLoad
+		cpuName := cachedCpuName
+		gpuName := cachedGpuName
+		gpuTemp := cachedGpuTemp
+		gpuUse := cachedGpuUse
+		statsMutex.RUnlock()
 
 		stats := map[string]string{
-			"cpu":         "0",
-			"ram":         "0",
-			"media":       "",
-			"gpuTemp":     "0",
-			"gpuUse":      "0",
-			"cpuName":     "CPU",
-			"ramTot":      "0",
-			"ramUse":      "0",
-			"gpuName":     "GPU",
+			"cpu":         cpu,
+			"ram":         ramPct,
+			"media":       media,
+			"gpuTemp":     gpuTemp,
+			"gpuUse":      gpuUse,
+			"cpuName":     cpuName,
+			"ramTot":      ramTot,
+			"ramUse":      ramUse,
+			"gpuName":     gpuName,
 			"activeApp":   activeApp,
 			"activeTitle": activeTitle,
 		}
-
-		if len(parts) >= 9 {
-			stats["cpu"] = parts[0]
-			stats["ram"] = parts[1]
-			stats["media"] = parts[2]
-			stats["gpuTemp"] = parts[3]
-			stats["gpuUse"] = parts[4]
-			stats["cpuName"] = parts[5]
-			stats["ramTot"] = parts[6]
-			stats["ramUse"] = parts[7]
-			stats["gpuName"] = parts[8]
-		}
-
-		// log.Printf("[Stats] CPU:%s%%, RAM:%s%%, GPU:%s%% (%sC) Media: %s\n", stats["cpu"], stats["ram"], stats["gpuUse"], stats["gpuTemp"], stats["media"])
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(stats)
@@ -1162,35 +1312,13 @@ func main() {
 	})
 
 	mux.HandleFunc("/what-is-playing", func(w http.ResponseWriter, r *http.Request) {
-		psCommand := `
-			$media = ""
-			$spotify = Get-Process spotify -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -and $_.MainWindowTitle -ne "Spotify" -and $_.MainWindowTitle -ne "Spotify Free" -and $_.MainWindowTitle -ne "Spotify Premium" } | Select-Object -First 1
-			if ($spotify) { 
-				$media = $spotify.MainWindowTitle 
-			} else {
-				$browsers = Get-Process chrome, msedge, firefox -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -like "* - YouTube*" -or $_.MainWindowTitle -like "* - Spotify*" } | Select-Object -First 1
-				if ($browsers) {
-					$media = $browsers.MainWindowTitle -replace " - YouTube", "" -replace " - Spotify", ""
-				}
-			}
-
-			if ($media -ne "") {
-				Write-Output $media
-			} else {
-				Write-Output "Şu an ne çaldığını bulamadım."
-			}
-		`
-		output, _ := runPowerShellWithOutput(psCommand)
-		info := strings.TrimSpace(output)
-
+		info := getMediaInfo()
 		var message string
-		if info == "Şu an ne çaldığını bulamadım." {
-			message = info
+		if info == "" {
+			message = "Şu an ne çaldığını bulamadım."
 		} else {
 			message = "Şu an çalıyor: " + info
 		}
-
-		//speak(message)
 		fmt.Fprint(w, message)
 	})
 
