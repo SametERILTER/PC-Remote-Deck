@@ -12,6 +12,7 @@ import {
     Easing,
     ScrollView,
     Platform,
+    BackHandler,
 } from 'react-native';
 import { FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -359,32 +360,44 @@ const DeckScreen = ({ navigation }) => {
 
     // Odak: landscape + tam ekran, verileri yükle, polling başlat
     useEffect(() => {
-        const unsubFocus = navigation.addListener('focus', async () => {
-            try {
-                await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
-            } catch (e) {}
+        let orientTimer = null;
+        const unsubFocus = navigation.addListener('focus', () => {
+            orientTimer = setTimeout(() => {
+                ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE).catch(() => {});
+            }, 50);
             if (Platform.OS === 'android' && NavigationBar?.setVisibilityAsync) {
-                try {
-                    await NavigationBar.setVisibilityAsync('hidden');
-                } catch (e) {}
+                NavigationBar.setVisibilityAsync('hidden').catch(() => {});
             }
             loadData();
         });
 
-        const unsubBlur = navigation.addListener('blur', async () => {
+        const unsubBlur = navigation.addListener('blur', () => {
+            if (orientTimer) clearTimeout(orientTimer);
             clearInterval(statsTimerRef.current);
             clearInterval(pingTimerRef.current);
             clearInterval(activeAppTimerRef.current);
             if (Platform.OS === 'android' && NavigationBar?.setVisibilityAsync) {
-                try {
-                    await NavigationBar.setVisibilityAsync('visible');
-                } catch (e) {}
+                NavigationBar.setVisibilityAsync('visible').catch(() => {});
             }
         });
 
+        const onBackPress = () => {
+            handleBack();
+            return true;
+        };
+        const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
         return () => {
+            if (orientTimer) clearTimeout(orientTimer);
+            backHandler.remove();
             unsubFocus();
             unsubBlur();
+            clearInterval(statsTimerRef.current);
+            clearInterval(pingTimerRef.current);
+            clearInterval(activeAppTimerRef.current);
+            if (Platform.OS === 'android' && NavigationBar?.setVisibilityAsync) {
+                NavigationBar.setVisibilityAsync('visible').catch(() => {});
+            }
         };
     }, [navigation]);
 
@@ -509,18 +522,13 @@ const DeckScreen = ({ navigation }) => {
         pingTimerRef.current = setInterval(() => checkConnection(url), 10000);
     };
 
-    const handleBack = async () => {
+    const handleBack = () => {
         clearInterval(statsTimerRef.current);
         clearInterval(pingTimerRef.current);
         clearInterval(activeAppTimerRef.current);
         if (Platform.OS === 'android' && NavigationBar?.setVisibilityAsync) {
-            try {
-                await NavigationBar.setVisibilityAsync('visible');
-            } catch (e) {}
+            NavigationBar.setVisibilityAsync('visible').catch(() => {});
         }
-        try {
-            await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
-        } catch (e) {}
         navigation.goBack();
     };
 
@@ -911,7 +919,8 @@ const DeckScreen = ({ navigation }) => {
                     label={t('features.keyboard')}
                     color="#60A5FA"
                     onPress={() => {
-                        handleBack().then(() => navigation.navigate('Keyboard'));
+                        handleBack();
+                        navigation.navigate('Keyboard');
                     }}
                 />
                 <QuickButton
@@ -919,7 +928,8 @@ const DeckScreen = ({ navigation }) => {
                     label={t('features.mouse')}
                     color="#A78BFA"
                     onPress={() => {
-                        handleBack().then(() => navigation.navigate('Mouse'));
+                        handleBack();
+                        navigation.navigate('Mouse');
                     }}
                 />
                 <QuickButton
@@ -927,7 +937,8 @@ const DeckScreen = ({ navigation }) => {
                     label={t('features.sendCommand')}
                     color="#34D399"
                     onPress={() => {
-                        handleBack().then(() => navigation.navigate('SendCommand'));
+                        handleBack();
+                        navigation.navigate('SendCommand');
                     }}
                 />
                 <QuickButton
@@ -935,7 +946,8 @@ const DeckScreen = ({ navigation }) => {
                     label={t('features.screenShot')}
                     color="#F59E0B"
                     onPress={() => {
-                        handleBack().then(() => navigation.navigate('ScreenShot'));
+                        handleBack();
+                        navigation.navigate('ScreenShot');
                     }}
                 />
             </View>

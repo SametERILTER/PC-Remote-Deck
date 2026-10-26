@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -356,9 +357,11 @@ func enableCORS(next http.Handler) http.Handler {
 	})
 }
 
-// Helper to run powershell commands
+// Helper to run powershell commands with timeout
 func runPowerShell(command string) {
-	exec.Command("powershell", "-Command", command).Run()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	exec.CommandContext(ctx, "powershell", "-Command", command).Run()
 }
 
 func volumeUp() {
@@ -385,9 +388,16 @@ func openUrl(url string) {
 	exec.Command("cmd", "/C", "start", url).Run()
 }
 
-// Helper to run powershell and get output
+// Helper to run powershell and get output with timeout
 func runPowerShellWithOutput(command string) (string, error) {
-	out, err := exec.Command("powershell", "-Command", command).CombinedOutput()
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "powershell", "-Command", command)
+	out, err := cmd.CombinedOutput()
+	if ctx.Err() == context.DeadlineExceeded {
+		return string(out) + "\n[Hata: Komut zaman aşımına uğradı (20s limit)]", ctx.Err()
+	}
 	return string(out), err
 }
 
@@ -672,7 +682,11 @@ func main() {
 
 		output, err := runPowerShellWithOutput(command)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			if err == context.DeadlineExceeded {
+				w.WriteHeader(http.StatusGatewayTimeout)
+			} else {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
 			fmt.Fprint(w, output)
 			return
 		}

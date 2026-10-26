@@ -5,6 +5,8 @@ import { FontAwesome5, Octicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
 import { ALL_DECK_BUTTONS, DEFAULT_DECK_IDS, getDeckBtnTitle } from '../../constants';
 
 const PRESET_KEYS = [
@@ -33,6 +35,8 @@ const getPresetCommands = (t) => [
 const SettingsScreen = () => {
     const { t, i18n } = useTranslation();
     const insets = useSafeAreaInsets();
+    const topInset = Math.max(insets.top, 16);
+    const gradientHeight = topInset + 82;
     const PRESET_COMMANDS = getPresetCommands(t);
 
     const [isLangModalVisible, setIsLangModalVisible] = useState(false);
@@ -264,18 +268,20 @@ const SettingsScreen = () => {
 
     return (
         <View style={styles.container}>
-            {/* Üst Başlık */}
-            <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) + 20, paddingBottom: 16 }]}>
-                <Text style={styles.headerTitle}>{t('settings.title')}</Text>
-            </View>
-            
+            <StatusBar style="light" />
+
+            {/* Kaydırılabilir İçerik (Header ve gradient altından yukarı kayar) */}
             <ScrollView 
                 style={styles.content} 
                 contentContainerStyle={[
                     styles.scrollContent, 
-                    { paddingBottom: Math.max(insets.bottom, 16) + 100 }
+                    { 
+                        paddingTop: topInset + 66,
+                        paddingBottom: Math.max(insets.bottom, 16) + 100 
+                    }
                 ]}
                 showsVerticalScrollIndicator={false}
+                bounces={true}
             >
                 {/* Bağlantı Ayarları */}
                 <Text style={styles.sectionTitle}>{t('settings.conn_title')}</Text>
@@ -414,9 +420,31 @@ const SettingsScreen = () => {
                 )}
             </ScrollView>
 
+            {/* Status Bar & Header Üst Gradient Overlay */}
+            <LinearGradient
+                colors={['#080808', '#080808', 'rgba(8, 8, 8, 0.70)', 'rgba(8, 8, 8, 0.30)', 'rgba(8, 8, 8, 0)']}
+                locations={[0, 0.28, 0.52, 0.76, 1.0]}
+                style={[styles.headerWrapper, { height: gradientHeight }]}
+                pointerEvents="box-none"
+            >
+                <View style={[styles.headerBar, { paddingTop: topInset + 14 }]}>
+                    <Text style={styles.headerTitle}>{t('settings.title')}</Text>
+                </View>
+            </LinearGradient>
+
             {/* Deck Düzenleme Modalı */}
-            <Modal animationType="slide" transparent={true} visible={isEditModalVisible}>
+            <Modal 
+                animationType="slide" 
+                transparent={true} 
+                visible={isEditModalVisible}
+                onRequestClose={() => setIsEditModalVisible(false)}
+            >
                 <View style={styles.modalOverlay}>
+                    <TouchableOpacity
+                        style={StyleSheet.absoluteFill}
+                        activeOpacity={1}
+                        onPress={() => setIsEditModalVisible(false)}
+                    />
                     <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 20) }]}>
                         <View style={styles.sheetHandleWrap}>
                             <View style={styles.sheetHandle} />
@@ -527,8 +555,18 @@ const SettingsScreen = () => {
             </Modal>
 
             {/* Özel Buton Oluşturma Modalı */}
-            <Modal animationType="slide" transparent={true} visible={isCreateModalVisible}>
+            <Modal 
+                animationType="slide" 
+                transparent={true} 
+                visible={isCreateModalVisible}
+                onRequestClose={() => setIsCreateModalVisible(false)}
+            >
                 <View style={styles.modalOverlay}>
+                    <TouchableOpacity
+                        style={StyleSheet.absoluteFill}
+                        activeOpacity={1}
+                        onPress={() => setIsCreateModalVisible(false)}
+                    />
                     <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 20) }]}>
                         <View style={styles.sheetHandleWrap}>
                             <View style={styles.sheetHandle} />
@@ -748,8 +786,18 @@ const SettingsScreen = () => {
             </Modal>
 
             {/* Uygulama Seçme Modalı */}
-            <Modal animationType="slide" transparent={true} visible={isAppModalVisible}>
+            <Modal 
+                animationType="slide" 
+                transparent={true} 
+                visible={isAppModalVisible}
+                onRequestClose={() => setIsAppModalVisible(false)}
+            >
                 <View style={styles.modalOverlay}>
+                    <TouchableOpacity
+                        style={StyleSheet.absoluteFill}
+                        activeOpacity={1}
+                        onPress={() => setIsAppModalVisible(false)}
+                    />
                     <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 20) }]}>
                         <View style={styles.sheetHandleWrap}>
                             <View style={styles.sheetHandle} />
@@ -802,8 +850,18 @@ const SettingsScreen = () => {
             </Modal>
 
             {/* Dil Seçme Modalı */}
-            <Modal animationType="slide" transparent={true} visible={isLangModalVisible}>
+            <Modal 
+                animationType="slide" 
+                transparent={true} 
+                visible={isLangModalVisible}
+                onRequestClose={() => setIsLangModalVisible(false)}
+            >
                 <View style={styles.modalOverlay}>
+                    <TouchableOpacity
+                        style={StyleSheet.absoluteFill}
+                        activeOpacity={1}
+                        onPress={() => setIsLangModalVisible(false)}
+                    />
                     <View style={[styles.modalContent, { height: 'auto', paddingBottom: Math.max(insets.bottom, 24) + 10, borderTopLeftRadius: 28, borderTopRightRadius: 28 }]}>
                         <View style={styles.sheetHandleWrap}>
                             <View style={styles.sheetHandle} />
@@ -853,10 +911,18 @@ const styles = StyleSheet.create({
         flex: 1, 
         backgroundColor: '#080808' 
     },
-    header: { 
-        paddingHorizontal: 20, 
-        paddingBottom: 14, 
-        backgroundColor: '#080808' 
+    // ── Header & Status Bar Overlay ───────────────────────────────────────────
+    headerWrapper: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 20,
+    },
+    headerBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 20,
     },
     headerTitle: { 
         fontFamily: 'PlusJakartaSans_800ExtraBold', 
@@ -866,10 +932,9 @@ const styles = StyleSheet.create({
     },
     content: { 
         flex: 1, 
-        paddingHorizontal: 18 
     },
     scrollContent: { 
-        paddingTop: 14 
+        paddingHorizontal: 18,
     },
     sectionTitle: { 
         fontFamily: 'PlusJakartaSans_700Bold', 

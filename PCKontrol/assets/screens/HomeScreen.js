@@ -47,8 +47,8 @@ const HomeScreen = ({ navigation }) => {
             t('home.disconnect_msg'),
             [
                 { text: t('home.cancel'), style: 'cancel' },
-                { 
-                    text: t('home.disconnect_title'), 
+                {
+                    text: t('home.disconnect_title'),
                     style: 'destructive',
                     onPress: async () => {
                         await AsyncStorage.removeItem('@pc_ip_address');
@@ -73,11 +73,11 @@ const HomeScreen = ({ navigation }) => {
                 setPcPort(port);
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 2000);
-                
+
                 const startTime = Date.now();
                 const res = await fetch(`http://${ip}:${port}/ping`, { signal: controller.signal });
                 const pingTime = Date.now() - startTime;
-                
+
                 clearTimeout(timeoutId);
                 if (res.ok) {
                     setIsConnected(true);
@@ -99,15 +99,21 @@ const HomeScreen = ({ navigation }) => {
     };
 
     useEffect(() => {
+        let orientationTimer = null;
         const unsubscribe = navigation.addListener('focus', () => {
-            ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+            orientationTimer = setTimeout(() => {
+                ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
+            }, 60);
             checkConnection();
+            clearInterval(pingTimerRef.current);
             pingTimerRef.current = setInterval(checkConnection, 5000);
         });
         const unsubBlur = navigation.addListener('blur', () => {
+            if (orientationTimer) clearTimeout(orientationTimer);
             clearInterval(pingTimerRef.current);
         });
         return () => {
+            if (orientationTimer) clearTimeout(orientationTimer);
             unsubscribe();
             unsubBlur();
             clearInterval(pingTimerRef.current);
@@ -115,7 +121,7 @@ const HomeScreen = ({ navigation }) => {
     }, [navigation]);
 
     const topInset = Math.max(insets.top, 16);
-    const gradientHeight = topInset + 88;
+    const gradientHeight = topInset + 82;
 
     return (
         <View style={styles.container}>
@@ -127,25 +133,25 @@ const HomeScreen = ({ navigation }) => {
                 showsVerticalScrollIndicator={false}
                 bounces={true}
                 contentContainerStyle={[
-                    styles.scrollContent, 
-                    { 
-                        paddingTop: topInset + 68,
-                        paddingBottom: Math.max(insets.bottom, 16) + 100 
+                    styles.scrollContent,
+                    {
+                        paddingTop: topInset + 66,
+                        paddingBottom: Math.max(insets.bottom, 16) + 100
                     }
                 ]}
             >
                 {/* Grimsi Cihaz Durum Kartı (Bordersız) */}
-                <TouchableOpacity 
-                    style={styles.statusCard} 
-                    onPress={openConnModal} 
+                <TouchableOpacity
+                    style={styles.statusCard}
+                    onPress={openConnModal}
                     activeOpacity={0.75}
                 >
                     <View style={styles.statusMainRow}>
                         <View style={styles.deviceIconBox}>
-                            <FontAwesome5 
-                                name="desktop" 
-                                size={17} 
-                                color={isConnected ? '#22C55E' : '#717684'} 
+                            <FontAwesome5
+                                name="desktop"
+                                size={17}
+                                color={isConnected ? '#22C55E' : '#717684'}
                             />
                         </View>
                         <View style={styles.statusTextCol}>
@@ -154,21 +160,21 @@ const HomeScreen = ({ navigation }) => {
                                     {isConnected ? t('home.connected') : t('home.disconnected')}
                                 </Text>
                                 <View style={[
-                                    styles.statusDot, 
+                                    styles.statusDot,
                                     { backgroundColor: isConnected ? '#22C55E' : '#717684' }
                                 ]} />
                             </View>
                             <Text style={styles.statusSubtitle} numberOfLines={1}>
-                                {isConnected 
-                                    ? `${pcIp} • ${ping}` 
+                                {isConnected
+                                    ? `${pcIp} • ${ping}`
                                     : (pcIp || t('home.ip_not_set'))}
                             </Text>
                         </View>
                     </View>
 
                     <View style={styles.statusRightCol}>
-                        <TouchableOpacity 
-                            style={styles.reconnectBtn} 
+                        <TouchableOpacity
+                            style={styles.reconnectBtn}
                             onPress={checkConnection}
                             activeOpacity={0.7}
                         >
@@ -216,9 +222,9 @@ const HomeScreen = ({ navigation }) => {
 
                 <View style={styles.toolsGrid}>
                     {FEATURES.map((feat) => (
-                        <TouchableOpacity 
-                            key={feat.id} 
-                            style={styles.toolCard} 
+                        <TouchableOpacity
+                            key={feat.id}
+                            style={styles.toolCard}
                             onPress={() => navigation.navigate(feat.id)}
                             activeOpacity={0.7}
                         >
@@ -232,29 +238,25 @@ const HomeScreen = ({ navigation }) => {
             </ScrollView>
 
             {/* Status Bar & Header Üst Gradient Overlay */}
-            <View 
-                style={[styles.headerWrapper, { height: gradientHeight }]} 
+            <LinearGradient
+                colors={['#080808', '#080808', 'rgba(8, 8, 8, 0.70)', 'rgba(8, 8, 8, 0.30)', 'rgba(8, 8, 8, 0)']}
+                locations={[0, 0.28, 0.52, 0.76, 1.0]}
+                style={[styles.headerWrapper, { height: gradientHeight }]}
                 pointerEvents="box-none"
             >
-                <LinearGradient
-                    colors={['#080808', '#080808', 'rgba(8, 8, 8, 0.75)', 'rgba(8, 8, 8, 0)']}
-                    locations={[0, 0.60, 0.84, 1.0]}
-                    style={StyleSheet.absoluteFillObject}
-                    pointerEvents="none"
-                />
-                <View style={[styles.headerBar, { paddingTop: topInset + 12 }]}>
+                <View style={[styles.headerBar, { paddingTop: topInset + 14 }]}>
                     <View style={styles.brandContainer}>
                         <Text style={styles.brandTitle}>PCKONTROL</Text>
                     </View>
-                    <TouchableOpacity 
-                        style={styles.headerActionBtn} 
+                    <TouchableOpacity
+                        style={styles.headerActionBtn}
                         onPress={() => navigation.navigate('QrScanner')}
                         activeOpacity={0.7}
                     >
                         <FontAwesome5 name="qrcode" size={17} color="#E2E8F0" />
                     </TouchableOpacity>
                 </View>
-            </View>
+            </LinearGradient>
 
             {/* Bağlantı Detayı Modalı (Gerçek Bottom Sheet) */}
             <Modal
@@ -264,10 +266,10 @@ const HomeScreen = ({ navigation }) => {
                 onRequestClose={closeConnModal}
             >
                 <View style={styles.modalOverlay}>
-                    <TouchableOpacity 
-                        style={StyleSheet.absoluteFill} 
-                        activeOpacity={1} 
-                        onPress={closeConnModal} 
+                    <TouchableOpacity
+                        style={StyleSheet.absoluteFill}
+                        activeOpacity={1}
+                        onPress={closeConnModal}
                     />
                     <View style={[styles.modalSheet, { paddingBottom: Math.max(insets.bottom, 20) + 12 }]}>
                         <View style={styles.sheetHandleWrap}>
@@ -281,8 +283,8 @@ const HomeScreen = ({ navigation }) => {
                                 </View>
                                 <Text style={styles.modalTitle}>{t('home.conn_info')}</Text>
                             </View>
-                            <TouchableOpacity 
-                                onPress={closeConnModal} 
+                            <TouchableOpacity
+                                onPress={closeConnModal}
                                 style={styles.modalCloseBtn}
                                 activeOpacity={0.7}
                             >
@@ -315,11 +317,11 @@ const HomeScreen = ({ navigation }) => {
                                 <Text style={styles.modalLabel}>{t('home.status')}</Text>
                                 <View style={styles.statusPill}>
                                     <View style={[
-                                        styles.miniDot, 
+                                        styles.miniDot,
                                         { backgroundColor: isConnected ? '#22C55E' : '#EF4444' }
                                     ]} />
                                     <Text style={[
-                                        styles.statusPillText, 
+                                        styles.statusPillText,
                                         { color: isConnected ? '#4ADE80' : '#F87171' }
                                     ]}>
                                         {isConnected ? t('home.status_connected') : t('home.status_disconnected')}
@@ -327,8 +329,8 @@ const HomeScreen = ({ navigation }) => {
                                 </View>
                             </View>
 
-                            <TouchableOpacity 
-                                style={styles.disconnectBtn} 
+                            <TouchableOpacity
+                                style={styles.disconnectBtn}
                                 onPress={handleDisconnect}
                                 activeOpacity={0.7}
                             >
@@ -356,7 +358,6 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         zIndex: 20,
-        elevation: 10,
     },
     headerBar: {
         flexDirection: 'row',
