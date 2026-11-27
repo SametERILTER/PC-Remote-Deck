@@ -95,16 +95,37 @@ const (
 	DWMWA_CLOAKED    = 14
 	WM_CLOSE         = 0x0010
 
-	INPUT_KEYBOARD    = 1
-	KEYEVENTF_UNICODE = 0x0004
-	KEYEVENTF_KEYUP   = 0x0002
-	VK_BACK           = 0x08
-	VK_RETURN         = 0x0D
-	VK_MENU           = 0x12
-	VK_TAB            = 0x09
-	VK_VOLUME_MUTE    = 0xAD
-	VK_VOLUME_DOWN    = 0xAE
-	VK_VOLUME_UP      = 0xAF
+	INPUT_KEYBOARD      = 1
+	KEYEVENTF_UNICODE   = 0x0004
+	KEYEVENTF_KEYUP     = 0x0002
+	VK_BACK             = 0x08
+	VK_TAB              = 0x09
+	VK_RETURN           = 0x0D
+	VK_SHIFT            = 0x10
+	VK_CONTROL          = 0x11
+	VK_MENU             = 0x12
+	VK_ESCAPE           = 0x1B
+	VK_SPACE            = 0x20
+	VK_PRIOR            = 0x21
+	VK_NEXT             = 0x22
+	VK_END              = 0x23
+	VK_HOME             = 0x24
+	VK_LEFT             = 0x25
+	VK_UP               = 0x26
+	VK_RIGHT            = 0x27
+	VK_DOWN             = 0x28
+	VK_DELETE           = 0x2E
+	VK_LWIN             = 0x5B
+	VK_F1               = 0x70
+	VK_F4               = 0x73
+	VK_F5               = 0x74
+	VK_VOLUME_MUTE      = 0xAD
+	VK_VOLUME_DOWN      = 0xAE
+	VK_VOLUME_UP        = 0xAF
+	VK_MEDIA_NEXT_TRACK = 0xB0
+	VK_MEDIA_PREV_TRACK = 0xB1
+	VK_MEDIA_PLAY_PAUSE = 0xB3
+	VK_OEM_3            = 0xC0
 
 	INPUT_MOUSE           = 0
 	MOUSEEVENTF_MOVE      = 0x0001
@@ -143,23 +164,114 @@ func mouseEvent(flags uint32, dx, dy int32, data uint32) {
 	procMouseEvent.Call(uintptr(flags), uintptr(dx), uintptr(dy), uintptr(data), 0)
 }
 
+func newKeyInput(vk uint16, flags uint32) INPUT {
+	var in INPUT
+	in.Type = INPUT_KEYBOARD
+	ki := (*KEYBDINPUT)(unsafe.Pointer(&in.Data[0]))
+	ki.Vk = vk
+	ki.Flags = flags
+	return in
+}
+
 func sendKey(vk uint16) {
-	// Key Down
-	var inputDown INPUT
-	inputDown.Type = INPUT_KEYBOARD
-	kiDown := (*KEYBDINPUT)(unsafe.Pointer(&inputDown.Data[0]))
-	kiDown.Vk = vk
-	kiDown.Flags = 0
+	inputs := []INPUT{
+		newKeyInput(vk, 0),
+		newKeyInput(vk, KEYEVENTF_KEYUP),
+	}
+	procSendInput.Call(uintptr(len(inputs)), uintptr(unsafe.Pointer(&inputs[0])), uintptr(unsafe.Sizeof(inputs[0])))
+}
 
-	// Key Up
-	var inputUp INPUT
-	inputUp.Type = INPUT_KEYBOARD
-	kiUp := (*KEYBDINPUT)(unsafe.Pointer(&inputUp.Data[0]))
-	kiUp.Vk = vk
-	kiUp.Flags = KEYEVENTF_KEYUP
+func sendKeyCombo(modifiers []uint16, vk uint16) {
+	inputs := make([]INPUT, 0, len(modifiers)*2+2)
+	for _, mod := range modifiers {
+		inputs = append(inputs, newKeyInput(mod, 0))
+	}
+	inputs = append(inputs, newKeyInput(vk, 0), newKeyInput(vk, KEYEVENTF_KEYUP))
+	for i := len(modifiers) - 1; i >= 0; i-- {
+		inputs = append(inputs, newKeyInput(modifiers[i], KEYEVENTF_KEYUP))
+	}
+	procSendInput.Call(uintptr(len(inputs)), uintptr(unsafe.Pointer(&inputs[0])), uintptr(unsafe.Sizeof(inputs[0])))
+}
 
-	procSendInput.Call(1, uintptr(unsafe.Pointer(&inputDown)), uintptr(unsafe.Sizeof(inputDown)))
-	procSendInput.Call(1, uintptr(unsafe.Pointer(&inputUp)), uintptr(unsafe.Sizeof(inputUp)))
+var namedVKMap = map[string]uint16{
+	"ENTER":     VK_RETURN,
+	"RETURN":    VK_RETURN,
+	"TAB":       VK_TAB,
+	"ESC":       VK_ESCAPE,
+	"ESCAPE":    VK_ESCAPE,
+	"DEL":       VK_DELETE,
+	"DELETE":    VK_DELETE,
+	"BACKSPACE": VK_BACK,
+	"BS":        VK_BACK,
+	"SPACE":     VK_SPACE,
+	"LEFT":      VK_LEFT,
+	"RIGHT":     VK_RIGHT,
+	"UP":        VK_UP,
+	"DOWN":      VK_DOWN,
+	"HOME":      VK_HOME,
+	"END":       VK_END,
+	"PGUP":      VK_PRIOR,
+	"PGDN":      VK_NEXT,
+	"`":         VK_OEM_3,
+}
+
+func sendKeysString(s string) {
+	var mods []uint16
+	for i := 0; i < len(s); i++ {
+		ch := s[i]
+		switch ch {
+		case '^':
+			mods = append(mods, VK_CONTROL)
+			continue
+		case '%':
+			mods = append(mods, VK_MENU)
+			continue
+		case '+':
+			mods = append(mods, VK_SHIFT)
+			continue
+		case '{':
+			end := strings.IndexByte(s[i+1:], '}')
+			if end != -1 {
+				token := strings.ToUpper(s[i+1 : i+1+end])
+				i += end + 1
+				var vk uint16
+				if v, ok := namedVKMap[token]; ok {
+					vk = v
+				} else if strings.HasPrefix(token, "F") && len(token) >= 2 {
+					if fn, err := strconv.Atoi(token[1:]); err == nil && fn >= 1 && fn <= 12 {
+						vk = VK_F1 + uint16(fn-1)
+					}
+				}
+				if vk != 0 {
+					sendKeyCombo(mods, vk)
+				}
+				mods = nil
+				continue
+			}
+		}
+
+		var vk uint16
+		switch {
+		case ch >= 'a' && ch <= 'z':
+			vk = uint16(ch - 'a' + 'A')
+		case ch >= 'A' && ch <= 'Z':
+			if len(mods) == 0 {
+				mods = append(mods, VK_SHIFT)
+			}
+			vk = uint16(ch)
+		case ch >= '0' && ch <= '9':
+			vk = uint16(ch)
+		case ch == ' ':
+			vk = VK_SPACE
+		}
+
+		if vk != 0 {
+			sendKeyCombo(mods, vk)
+		} else if len(mods) == 0 {
+			typeString(string(ch))
+		}
+		mods = nil
+	}
 }
 
 func typeString(text string) {
@@ -375,23 +487,27 @@ func runPowerShell(command string) {
 }
 
 func volumeUp() {
-	runPowerShell("$w = New-Object -ComObject WScript.Shell; $w.SendKeys([char]175)")
+	sendKey(VK_VOLUME_UP)
 }
 
 func volumeDown() {
-	runPowerShell("$w = New-Object -ComObject WScript.Shell; $w.SendKeys([char]174)")
+	sendKey(VK_VOLUME_DOWN)
 }
 
 func muteVolume() {
-	runPowerShell("$w = New-Object -ComObject WScript.Shell; $w.SendKeys([char]173)")
+	sendKey(VK_VOLUME_MUTE)
 }
 
 func mediaPlayPause() {
-	runPowerShell("$w = New-Object -ComObject WScript.Shell; $w.SendKeys([char]179)")
+	sendKey(VK_MEDIA_PLAY_PAUSE)
 }
 
 func mediaNext() {
-	runPowerShell("$w = New-Object -ComObject WScript.Shell; $w.SendKeys([char]176)")
+	sendKey(VK_MEDIA_NEXT_TRACK)
+}
+
+func mediaPrev() {
+	sendKey(VK_MEDIA_PREV_TRACK)
 }
 
 func openUrl(url string) {
@@ -772,7 +888,7 @@ func main() {
 	})
 
 	mux.HandleFunc("/prev", func(w http.ResponseWriter, r *http.Request) {
-		runPowerShell("$w = New-Object -ComObject WScript.Shell; $w.SendKeys([char]177)")
+		mediaPrev()
 		fmt.Fprint(w, "Önceki Şarkı")
 	})
 
@@ -782,47 +898,47 @@ func main() {
 	})
 
 	mux.HandleFunc("/chrome-new-tab", func(w http.ResponseWriter, r *http.Request) {
-		runPowerShell("$w = New-Object -ComObject WScript.Shell; $w.SendKeys('^t')")
+		sendKeyCombo([]uint16{VK_CONTROL}, 'T')
 		fmt.Fprint(w, "Chrome Yeni Sekme")
 	})
 
 	mux.HandleFunc("/chrome-close-tab", func(w http.ResponseWriter, r *http.Request) {
-		runPowerShell("$w = New-Object -ComObject WScript.Shell; $w.SendKeys('^w')")
+		sendKeyCombo([]uint16{VK_CONTROL}, 'W')
 		fmt.Fprint(w, "Chrome Sekme Kapat")
 	})
 
 	mux.HandleFunc("/chrome-refresh", func(w http.ResponseWriter, r *http.Request) {
-		runPowerShell("$w = New-Object -ComObject WScript.Shell; $w.SendKeys('{F5}')")
+		sendKey(VK_F5)
 		fmt.Fprint(w, "Chrome Yenile")
 	})
 
 	mux.HandleFunc("/chrome-next-tab", func(w http.ResponseWriter, r *http.Request) {
-		runPowerShell("$w = New-Object -ComObject WScript.Shell; $w.SendKeys('^{TAB}')")
+		sendKeyCombo([]uint16{VK_CONTROL}, VK_TAB)
 		fmt.Fprint(w, "Chrome Sonraki Sekme")
 	})
 
 	mux.HandleFunc("/chrome-prev-tab", func(w http.ResponseWriter, r *http.Request) {
-		runPowerShell("$w = New-Object -ComObject WScript.Shell; $w.SendKeys('^+{TAB}')")
+		sendKeyCombo([]uint16{VK_CONTROL, VK_SHIFT}, VK_TAB)
 		fmt.Fprint(w, "Chrome Önceki Sekme")
 	})
 
 	mux.HandleFunc("/chrome-incognito", func(w http.ResponseWriter, r *http.Request) {
-		runPowerShell("$w = New-Object -ComObject WScript.Shell; $w.SendKeys('^+n')")
+		sendKeyCombo([]uint16{VK_CONTROL, VK_SHIFT}, 'N')
 		fmt.Fprint(w, "Chrome Gizli Sekme")
 	})
 
 	mux.HandleFunc("/chrome-back", func(w http.ResponseWriter, r *http.Request) {
-		runPowerShell("$w = New-Object -ComObject WScript.Shell; $w.SendKeys('%{LEFT}')")
+		sendKeyCombo([]uint16{VK_MENU}, VK_LEFT)
 		fmt.Fprint(w, "Chrome Geri Git")
 	})
 
 	mux.HandleFunc("/spotify-search", func(w http.ResponseWriter, r *http.Request) {
-		runPowerShell("$w = New-Object -ComObject WScript.Shell; $w.SendKeys('^l')")
+		sendKeyCombo([]uint16{VK_CONTROL}, 'L')
 		fmt.Fprint(w, "Spotify Arama")
 	})
 
 	mux.HandleFunc("/code-terminal", func(w http.ResponseWriter, r *http.Request) {
-		runPowerShell("$w = New-Object -ComObject WScript.Shell; $w.SendKeys('^{`}')")
+		sendKeyCombo([]uint16{VK_CONTROL}, VK_OEM_3)
 		fmt.Fprint(w, "Terminal Aç")
 	})
 
@@ -887,28 +1003,28 @@ func main() {
 	mux.HandleFunc("/press-combo", func(w http.ResponseWriter, r *http.Request) {
 		keysStr := r.URL.Query().Get("keys")
 		if keysStr != "" {
-			runPowerShell(fmt.Sprintf("$w = New-Object -ComObject WScript.Shell; $w.SendKeys('%s')", keysStr))
+			sendKeysString(keysStr)
 			fmt.Fprint(w, "Kombinasyon Gönderildi")
 		}
 	})
 
 	mux.HandleFunc("/code-save-all", func(w http.ResponseWriter, r *http.Request) {
-		runPowerShell("$w = New-Object -ComObject WScript.Shell; $w.SendKeys('^+s')")
+		sendKeyCombo([]uint16{VK_CONTROL, VK_SHIFT}, 'S')
 		fmt.Fprint(w, "Hepsini Kaydet")
 	})
 
 	mux.HandleFunc("/code-format", func(w http.ResponseWriter, r *http.Request) {
-		runPowerShell("$w = New-Object -ComObject WScript.Shell; $w.SendKeys('%+f')")
+		sendKeyCombo([]uint16{VK_MENU, VK_SHIFT}, 'F')
 		fmt.Fprint(w, "Formatla")
 	})
 
 	mux.HandleFunc("/code-find-file", func(w http.ResponseWriter, r *http.Request) {
-		runPowerShell("$w = New-Object -ComObject WScript.Shell; $w.SendKeys('^p')")
+		sendKeyCombo([]uint16{VK_CONTROL}, 'P')
 		fmt.Fprint(w, "Dosya Bul")
 	})
 
 	mux.HandleFunc("/code-run", func(w http.ResponseWriter, r *http.Request) {
-		runPowerShell("$w = New-Object -ComObject WScript.Shell; $w.SendKeys('{F5}')")
+		sendKey(VK_F5)
 		fmt.Fprint(w, "Çalıştır")
 	})
 
@@ -920,7 +1036,7 @@ func main() {
 	mux.HandleFunc("/press-key", func(w http.ResponseWriter, r *http.Request) {
 		key := r.URL.Query().Get("key")
 		if key != "" {
-			runPowerShell(fmt.Sprintf("$w = New-Object -ComObject WScript.Shell; $w.SendKeys('%s')", key))
+			sendKeysString(key)
 			fmt.Fprintf(w, "Tuş Basıldı: %s", key)
 		}
 	})
@@ -941,7 +1057,7 @@ func main() {
 	})
 
 	mux.HandleFunc("/close-window", func(w http.ResponseWriter, r *http.Request) {
-		runPowerShell("$w = New-Object -ComObject WScript.Shell; $w.SendKeys('%{F4}')")
+		sendKeyCombo([]uint16{VK_MENU}, VK_F4)
 		fmt.Fprint(w, "Pencere Kapatıldı")
 	})
 
