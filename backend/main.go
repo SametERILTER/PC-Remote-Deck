@@ -14,6 +14,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -473,7 +474,8 @@ func getFocusedProcessName() string {
 }
 
 var (
-	authToken string
+	authToken     string
+	serverLocalIP = "127.0.0.1"
 
 	authFailMu  sync.Mutex
 	authFails   = make(map[string]*authFailInfo)
@@ -578,12 +580,33 @@ func authMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// CORS Middleware to allow requests from the phone
+func isAllowedOrigin(origin string) bool {
+	if origin == "" {
+		// Native mobile apps (React Native) and non-browser clients do not send Origin
+		return true
+	}
+	u, err := url.Parse(origin)
+	if err != nil {
+		return false
+	}
+	host := u.Hostname()
+	return host == "localhost" || host == "127.0.0.1" || host == "::1" || (serverLocalIP != "" && host == serverLocalIP)
+}
+
+// CORS Middleware to restrict browser origins while allowing native mobile clients
 func enableCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Auth-Token")
+		origin := r.Header.Get("Origin")
+		if origin != "" {
+			if !isAllowedOrigin(origin) {
+				http.Error(w, "Origin not allowed", http.StatusForbidden)
+				return
+			}
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Vary", "Origin")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Auth-Token")
+		}
 
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)
@@ -1401,7 +1424,7 @@ func main() {
 
 	var wsUpgrader = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
-			return true // Allow all local network connections
+			return isAllowedOrigin(r.Header.Get("Origin"))
 		},
 		ReadBufferSize:  2048,
 		WriteBufferSize: 2048,
@@ -1732,6 +1755,7 @@ func main() {
 		localAddr := conn.LocalAddr().(*net.UDPAddr)
 		localIP = localAddr.IP.String()
 	}
+	serverLocalIP = localIP
 
 	asciiArt := `
 ██████╗  ██████╗     ██████╗ ██████╗ ███╗   ██╗████████╗██████╗  ██████╗ ██╗     
