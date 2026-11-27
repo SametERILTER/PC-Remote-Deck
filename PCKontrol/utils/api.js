@@ -1,4 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { hmacSha256Hex } from './crypto';
+
+function generateNonce() {
+    return `${Math.random().toString(36).slice(2, 10)}${Math.random().toString(36).slice(2, 10)}`;
+}
 
 export async function getStoredConnection() {
     const [rawIp, rawPort, rawToken] = await Promise.all([
@@ -17,11 +22,23 @@ export async function getStoredConnection() {
 
 export function getAuthHeaders(token, extraHeaders = {}) {
     if (!token) return { ...extraHeaders };
+    const ts = String(Date.now());
+    const nonce = generateNonce();
+    const sig = hmacSha256Hex(token, `${ts}:${nonce}`);
     return {
         ...extraHeaders,
-        Authorization: `Bearer ${token}`,
-        'X-Auth-Token': token,
+        'X-Auth-Timestamp': ts,
+        'X-Auth-Nonce': nonce,
+        'X-Auth-Signature': sig,
     };
+}
+
+export function getWsAuthQuery(token) {
+    if (!token) return '';
+    const ts = String(Date.now());
+    const nonce = generateNonce();
+    const sig = hmacSha256Hex(token, `${ts}:${nonce}`);
+    return `?ts=${encodeURIComponent(ts)}&nonce=${encodeURIComponent(nonce)}&sig=${encodeURIComponent(sig)}`;
 }
 
 export async function authFetch(url, options = {}, tokenOverride = null) {

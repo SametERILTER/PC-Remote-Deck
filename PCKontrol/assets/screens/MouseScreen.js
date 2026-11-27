@@ -17,7 +17,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as NavigationBar from 'expo-navigation-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { getAuthHeaders } from '../../utils/api';
+import { getAuthHeaders, getWsAuthQuery } from '../../utils/api';
 
 const SPEED_PRESETS = [
     { label: '1x', factor: 1.5 },
@@ -137,7 +137,7 @@ const MouseScreen = ({ navigation }) => {
                 wsRef.current.close();
             }
 
-            const tokenQuery = token ? `?token=${encodeURIComponent(token)}` : '';
+            const tokenQuery = getWsAuthQuery(token);
             const wsUrl = `ws://${ip.trim()}:${port.trim()}/ws/mouse${tokenQuery}`;
             const ws = new WebSocket(wsUrl);
 

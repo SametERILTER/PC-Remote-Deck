@@ -3,7 +3,9 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/hex"
@@ -477,8 +479,11 @@ var (
 	authToken     string
 	serverLocalIP = "127.0.0.1"
 
-	authFailMu  sync.Mutex
-	authFails   = make(map[string]*authFailInfo)
+	authFailMu sync.Mutex
+	authFails  = make(map[string]*authFailInfo)
+
+	nonceMu    sync.Mutex
+	usedNonces = make(map[string]int64)
 )
 
 type authFailInfo struct {
@@ -530,6 +535,51 @@ func extractClientIP(remoteAddr string) string {
 	return host
 }
 
+func verifyHmacRequest(tsStr, nonce, sigHex string) bool {
+	if tsStr == "" || nonce == "" || sigHex == "" {
+		return false
+	}
+	tsMs, err := strconv.ParseInt(tsStr, 10, 64)
+	if err != nil {
+		return false
+	}
+	nowMs := time.Now().UnixMilli()
+	diff := nowMs - tsMs
+	if diff < 0 {
+		diff = -diff
+	}
+	if diff > 60_000 {
+		return false
+	}
+
+	sigBytes, err := hex.DecodeString(sigHex)
+	if err != nil {
+		return false
+	}
+	mac := hmac.New(sha256.New, []byte(authToken))
+	mac.Write([]byte(tsStr + ":" + nonce))
+	expected := mac.Sum(nil)
+	if !hmac.Equal(sigBytes, expected) {
+		return false
+	}
+
+	nonceMu.Lock()
+	defer nonceMu.Unlock()
+	if _, seen := usedNonces[nonce]; seen {
+		return false
+	}
+	if len(usedNonces) > 500 {
+		cutoff := nowMs - 60_000
+		for k, exp := range usedNonces {
+			if exp < cutoff {
+				delete(usedNonces, k)
+			}
+		}
+	}
+	usedNonces[nonce] = nowMs
+	return true
+}
+
 func authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ip := extractClientIP(r.RemoteAddr)
@@ -544,16 +594,29 @@ func authMiddleware(next http.Handler) http.Handler {
 		}
 		authFailMu.Unlock()
 
-		provided := ""
-		if authHeader := r.Header.Get("Authorization"); strings.HasPrefix(authHeader, "Bearer ") {
-			provided = strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
-		} else if xToken := r.Header.Get("X-Auth-Token"); xToken != "" {
-			provided = strings.TrimSpace(xToken)
-		} else if qToken := r.URL.Query().Get("token"); qToken != "" {
-			provided = strings.TrimSpace(qToken)
+		tsStr := r.Header.Get("X-Auth-Timestamp")
+		nonce := r.Header.Get("X-Auth-Nonce")
+		sigHex := r.Header.Get("X-Auth-Signature")
+		if tsStr == "" {
+			tsStr = r.URL.Query().Get("ts")
+			nonce = r.URL.Query().Get("nonce")
+			sigHex = r.URL.Query().Get("sig")
 		}
 
-		if subtle.ConstantTimeCompare([]byte(provided), []byte(authToken)) != 1 {
+		authorized := verifyHmacRequest(tsStr, nonce, sigHex)
+		if !authorized {
+			provided := ""
+			if authHeader := r.Header.Get("Authorization"); strings.HasPrefix(authHeader, "Bearer ") {
+				provided = strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
+			} else if xToken := r.Header.Get("X-Auth-Token"); xToken != "" {
+				provided = strings.TrimSpace(xToken)
+			} else if qToken := r.URL.Query().Get("token"); qToken != "" {
+				provided = strings.TrimSpace(qToken)
+			}
+			authorized = provided != "" && subtle.ConstantTimeCompare([]byte(provided), []byte(authToken)) == 1
+		}
+
+		if !authorized {
 			authFailMu.Lock()
 			if info == nil {
 				info = &authFailInfo{}
@@ -605,7 +668,7 @@ func enableCORS(next http.Handler) http.Handler {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Vary", "Origin")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Auth-Token")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Auth-Token, X-Auth-Timestamp, X-Auth-Nonce, X-Auth-Signature")
 		}
 
 		if r.Method == "OPTIONS" {
