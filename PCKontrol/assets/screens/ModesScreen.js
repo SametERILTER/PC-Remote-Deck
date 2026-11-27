@@ -12,11 +12,13 @@ import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
+import { getAuthHeaders } from '../../utils/api';
 
 const ModesScreen = ({ navigation }) => {
     const insets = useSafeAreaInsets();
     const { t } = useTranslation();
     const [baseUrl, setBaseUrl] = useState('');
+    const [authToken, setAuthToken] = useState('');
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -27,6 +29,8 @@ const ModesScreen = ({ navigation }) => {
         try {
             const savedIP = await AsyncStorage.getItem('@pc_ip_address');
             const savedPort = (await AsyncStorage.getItem('@pc_port')) || '9090';
+            const savedToken = (await AsyncStorage.getItem('@pc_token'))?.trim() || '';
+            setAuthToken(savedToken);
             if (savedIP) {
                 setBaseUrl(`http://${savedIP.trim()}:${savedPort.trim()}`);
             }
@@ -39,7 +43,7 @@ const ModesScreen = ({ navigation }) => {
         if (!baseUrl) return;
         setLoading(true);
         try {
-            await fetch(`${baseUrl}${endpoint}`);
+            await fetch(`${baseUrl}${endpoint}`, { headers: getAuthHeaders(authToken) });
         } catch (e) {
             console.log('Mode activation error');
         } finally {

@@ -19,6 +19,7 @@ import * as NavigationBar from 'expo-navigation-bar';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import { getAuthHeaders } from '../../utils/api';
 
 const ScreenShotScreen = ({ navigation }) => {
     const insets = useSafeAreaInsets();
@@ -26,6 +27,7 @@ const ScreenShotScreen = ({ navigation }) => {
     const [image, setImage] = useState(null);
     const [loading, setLoading] = useState(false);
     const [baseUrl, setBaseUrl] = useState('');
+    const tokenRef = useRef('');
     const [currentZoomLevel, setCurrentZoomLevel] = useState(1);
 
     // Animasyon ve Zoom Değerleri
@@ -76,6 +78,8 @@ const ScreenShotScreen = ({ navigation }) => {
         try {
             const savedIP = await AsyncStorage.getItem('@pc_ip_address');
             const savedPort = await AsyncStorage.getItem('@pc_port') || '9090';
+            const savedToken = (await AsyncStorage.getItem('@pc_token'))?.trim() || '';
+            tokenRef.current = savedToken;
             if (savedIP && savedPort) {
                 const url = `http://${savedIP.trim()}:${savedPort.trim()}`;
                 setBaseUrl(url);
@@ -89,7 +93,7 @@ const ScreenShotScreen = ({ navigation }) => {
         if (!url || loading) return;
         setLoading(true);
         try {
-            const response = await fetch(`${url}/screenshot`);
+            const response = await fetch(`${url}/screenshot`, { headers: getAuthHeaders(tokenRef.current) });
             const data = await response.json();
             if (data && data.image) {
                 setImage(`data:image/png;base64,${data.image}`);

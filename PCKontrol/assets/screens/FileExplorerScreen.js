@@ -13,11 +13,12 @@ import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { usePcConnection } from '../../hooks/usePcConnection';
+import { getAuthHeaders } from '../../utils/api';
 
 const FileExplorerScreen = ({ navigation }) => {
     const insets = useSafeAreaInsets();
     const { t } = useTranslation();
-    const { baseUrl, isConnected, isLoaded } = usePcConnection(navigation);
+    const { baseUrl, token, isConnected, isLoaded } = usePcConnection(navigation);
     const [currentPath, setCurrentPath] = useState('');
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -36,7 +37,7 @@ const FileExplorerScreen = ({ navigation }) => {
     const fetchDrives = async (url) => {
         setLoading(true);
         try {
-            const res = await fetch(`${url}/drives`);
+            const res = await fetch(`${url}/drives`, { headers: getAuthHeaders(token) });
             if (res.ok) {
                 const data = await res.json();
                 const mappedDrives = data.map(d => ({
@@ -63,7 +64,7 @@ const FileExplorerScreen = ({ navigation }) => {
         }
         setLoading(true);
         try {
-            const res = await fetch(`${url}/list-dir?path=${encodeURIComponent(path)}`);
+            const res = await fetch(`${url}/list-dir?path=${encodeURIComponent(path)}`, { headers: getAuthHeaders(token) });
             if (res.ok) {
                 const data = await res.json();
                 const sortedData = (data || []).sort((a, b) => {
@@ -105,7 +106,7 @@ const FileExplorerScreen = ({ navigation }) => {
 
     const openFile = async (path) => {
         try {
-            const res = await fetch(`${baseUrl}/open-path?path=${encodeURIComponent(path)}`);
+            const res = await fetch(`${baseUrl}/open-path?path=${encodeURIComponent(path)}`, { headers: getAuthHeaders(token) });
             if (!res.ok) throw new Error('Açılamadı');
         } catch (e) {
             Alert.alert(t('deck.error'), t('files.open_file_err'));
@@ -155,7 +156,7 @@ const FileExplorerScreen = ({ navigation }) => {
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            const res = await fetch(`${baseUrl}/delete-file?path=${encodeURIComponent(fullPath)}`);
+                            const res = await fetch(`${baseUrl}/delete-file?path=${encodeURIComponent(fullPath)}`, { headers: getAuthHeaders(token) });
                             if (res.ok) {
                                 fetchDir(currentPath);
                             } else {

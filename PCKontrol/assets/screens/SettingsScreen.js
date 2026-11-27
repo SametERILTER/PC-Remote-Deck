@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ALL_DECK_BUTTONS, DEFAULT_DECK_IDS, getDeckBtnTitle } from '../../constants';
+import { getAuthHeaders } from '../../utils/api';
 
 const PRESET_KEYS = [
     { label: 'CTRL', value: '^' },
@@ -42,6 +43,7 @@ const SettingsScreen = () => {
     const [isLangModalVisible, setIsLangModalVisible] = useState(false);
     const [ipAddress, setIpAddress] = useState('');
     const [port, setPort] = useState('9090');
+    const [authToken, setAuthToken] = useState('');
     const [isEditModalVisible, setIsEditModalVisible] = useState(false);
     const [activeItemIds, setActiveItemIds] = useState([]);
     const [viewMode, setViewMode] = useState('8');
@@ -75,7 +77,10 @@ const SettingsScreen = () => {
         setIsLoadingApps(true);
         try {
             const url = `http://${ipAddress}:${port}/installed-apps`;
-            const response = await fetch(url, { method: 'GET' });
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: getAuthHeaders(authToken.trim()),
+            });
             if (!response.ok) throw new Error('Network error');
             const data = await response.json();
             setInstalledApps(data || []);
@@ -97,6 +102,7 @@ const SettingsScreen = () => {
         try {
             const savedIP = await AsyncStorage.getItem('@pc_ip_address');
             const savedPort = await AsyncStorage.getItem('@pc_port');
+            const savedToken = await AsyncStorage.getItem('@pc_token');
             const savedActiveIds = await AsyncStorage.getItem('@active_deck_ids');
             const savedViewMode = await AsyncStorage.getItem('@deck_view_mode');
             const savedCustomButtons = await AsyncStorage.getItem('@custom_buttons');
@@ -107,6 +113,7 @@ const SettingsScreen = () => {
 
             if (savedIP !== null) setIpAddress(savedIP);
             if (savedPort !== null) setPort(savedPort);
+            if (savedToken !== null) setAuthToken(savedToken);
             if (savedViewMode !== null) setViewMode(savedViewMode);
             else setViewMode('8');
 
@@ -139,6 +146,7 @@ const SettingsScreen = () => {
             }
             await AsyncStorage.setItem('@pc_ip_address', ipAddress.trim());
             await AsyncStorage.setItem('@pc_port', port.trim());
+            await AsyncStorage.setItem('@pc_token', authToken.trim());
             Keyboard.dismiss();
             Alert.alert(t('power.success'), t('settings.success_save'));
         } catch (e) {
@@ -307,6 +315,18 @@ const SettingsScreen = () => {
                             placeholder={t('settings.port_ph')} 
                             placeholderTextColor="#555966" 
                             keyboardType="numeric" 
+                        />
+                    </View>
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>{t('settings.token_label')}</Text>
+                        <TextInput 
+                            style={styles.input} 
+                            value={authToken} 
+                            onChangeText={setAuthToken} 
+                            placeholder={t('settings.token_ph')} 
+                            placeholderTextColor="#555966" 
+                            autoCapitalize="none"
+                            autoCorrect={false}
                         />
                     </View>
                     <TouchableOpacity style={styles.saveButton} onPress={saveSettings} activeOpacity={0.8}>

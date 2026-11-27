@@ -3,7 +3,10 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/subtle"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"image/png"
@@ -13,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -468,12 +472,118 @@ func getFocusedProcessName() string {
 	return strings.ToLower(syscall.UTF16ToString(name))
 }
 
+var (
+	authToken string
+
+	authFailMu  sync.Mutex
+	authFails   = make(map[string]*authFailInfo)
+)
+
+type authFailInfo struct {
+	count        int
+	blockedUntil time.Time
+}
+
+func getAuthFilePath() string {
+	cfgDir, err := os.UserConfigDir()
+	if err != nil {
+		return "auth.json"
+	}
+	return filepath.Join(cfgDir, "PCKontrol", "auth.json")
+}
+
+func loadOrCreateAuthToken() string {
+	type authConfig struct {
+		Token string `json:"token"`
+	}
+
+	authPath := getAuthFilePath()
+	if data, err := os.ReadFile(authPath); err == nil {
+		var cfg authConfig
+		if json.Unmarshal(data, &cfg) == nil && len(cfg.Token) >= 32 {
+			return cfg.Token
+		}
+	}
+
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		log.Fatal("Failed to generate auth token:", err)
+	}
+	token := hex.EncodeToString(b)
+
+	if dir := filepath.Dir(authPath); dir != "." {
+		_ = os.MkdirAll(dir, 0700)
+	}
+	if data, err := json.MarshalIndent(authConfig{Token: token}, "", "  "); err == nil {
+		_ = os.WriteFile(authPath, data, 0600)
+	}
+	return token
+}
+
+func extractClientIP(remoteAddr string) string {
+	host, _, err := net.SplitHostPort(remoteAddr)
+	if err != nil {
+		return remoteAddr
+	}
+	return host
+}
+
+func authMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ip := extractClientIP(r.RemoteAddr)
+		now := time.Now()
+
+		authFailMu.Lock()
+		info, exists := authFails[ip]
+		if exists && now.Before(info.blockedUntil) {
+			authFailMu.Unlock()
+			http.Error(w, "Too many failed auth attempts", http.StatusTooManyRequests)
+			return
+		}
+		authFailMu.Unlock()
+
+		provided := ""
+		if authHeader := r.Header.Get("Authorization"); strings.HasPrefix(authHeader, "Bearer ") {
+			provided = strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
+		} else if xToken := r.Header.Get("X-Auth-Token"); xToken != "" {
+			provided = strings.TrimSpace(xToken)
+		} else if qToken := r.URL.Query().Get("token"); qToken != "" {
+			provided = strings.TrimSpace(qToken)
+		}
+
+		if subtle.ConstantTimeCompare([]byte(provided), []byte(authToken)) != 1 {
+			authFailMu.Lock()
+			if info == nil {
+				info = &authFailInfo{}
+				authFails[ip] = info
+			}
+			info.count++
+			if info.count >= 10 {
+				info.blockedUntil = now.Add(1 * time.Minute)
+				info.count = 0
+			}
+			authFailMu.Unlock()
+
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		if exists {
+			authFailMu.Lock()
+			delete(authFails, ip)
+			authFailMu.Unlock()
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 // CORS Middleware to allow requests from the phone
 func enableCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Auth-Token")
 
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)
@@ -1612,11 +1722,7 @@ func main() {
 		fmt.Fprint(w, "Deleted")
 	})
 
-	go func() {
-		for {
-			time.Sleep(5 * time.Second)
-		}
-	}()
+	authToken = loadOrCreateAuthToken()
 
 	// Get Local IP
 	localIP := "127.0.0.1"
@@ -1639,6 +1745,7 @@ func main() {
 	fmt.Printf("PC Control Server Started\n")
 	fmt.Printf("Listening Port: %s\n", port)
 	fmt.Printf("IP Address: %s\n", localIP)
+	fmt.Printf("Auth Token: %s\n", authToken)
 
 	qrConfig := qrterminal.Config{
 		Level:     qrterminal.L,
@@ -1647,12 +1754,12 @@ func main() {
 		WhiteChar: qrterminal.WHITE,
 		QuietZone: 1,
 	}
-	qrData := fmt.Sprintf("%s:%s", localIP, port)
+	qrData := fmt.Sprintf("pckontrol://%s:%s?token=%s", localIP, port, authToken)
 	qrterminal.GenerateWithConfig(qrData, qrConfig)
 
 	fmt.Println("Open the PC Control app on your phone and scan the QR code.")
 
-	err = http.ListenAndServe("0.0.0.0:"+port, enableCORS(mux))
+	err = http.ListenAndServe("0.0.0.0:"+port, enableCORS(authMiddleware(mux)))
 	if err != nil {
 		log.Fatal("Failed to start server: ", err)
 	}

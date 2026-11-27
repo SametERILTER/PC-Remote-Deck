@@ -5,12 +5,13 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { usePcConnection } from '../../hooks/usePcConnection';
+import { getAuthHeaders } from '../../utils/api';
 
 const SpeakScreen = ({ navigation }) => {
     const insets = useSafeAreaInsets();
     const { t } = useTranslation();
     const [text, setText] = useState('');
-    const { ipAddress, port, isConnected } = usePcConnection(navigation);
+    const { ipAddress, port, token, isConnected } = usePcConnection(navigation);
     const [isSending, setIsSending] = useState(false);
     const [isVolModalVisible, setIsVolModalVisible] = useState(false);
 
@@ -28,7 +29,7 @@ const SpeakScreen = ({ navigation }) => {
         setIsSending(true);
         try {
             const url = `http://${ipAddress}:${port}/speak?text=${encodeURIComponent(text)}`;
-            const response = await fetch(url, { method: 'GET' });
+            const response = await fetch(url, { method: 'GET', headers: getAuthHeaders(token) });
 
             if (response.ok) {
                 setText('');
@@ -45,7 +46,7 @@ const SpeakScreen = ({ navigation }) => {
     const handleVolume = async (action) => {
         if (!ipAddress) return;
         try {
-            await fetch(`http://${ipAddress}:${port}${action}`, { method: 'GET' });
+            await fetch(`http://${ipAddress}:${port}${action}`, { method: 'GET', headers: getAuthHeaders(token) });
         } catch (e) {
             console.error('Volume error:', e);
         }

@@ -5,13 +5,14 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { usePcConnection } from '../../hooks/usePcConnection';
+import { getAuthHeaders } from '../../utils/api';
 
 const PRESETS = [15, 30, 45, 60, 90, 120];
 
 const PowerScreen = ({ navigation }) => {
     const insets = useSafeAreaInsets();
     const { t } = useTranslation();
-    const { ipAddress, port, isConnected } = usePcConnection(navigation);
+    const { ipAddress, port, token, isConnected } = usePcConnection(navigation);
     const [minutes, setMinutes] = useState('60');
 
     const adjustMinutes = (delta) => {
@@ -53,7 +54,7 @@ const PowerScreen = ({ navigation }) => {
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            await fetch(`http://${ipAddress}:${port}/shutdown`, { method: 'GET' });
+                            await fetch(`http://${ipAddress}:${port}/shutdown`, { method: 'GET', headers: getAuthHeaders(token) });
                             Alert.alert(t('power.success'), t('power.shut_sent'));
                         } catch (e) {
                             Alert.alert(t('deck.error'), t('power.shut_err'));
@@ -72,7 +73,7 @@ const PowerScreen = ({ navigation }) => {
 
         try {
             const url = `http://${ipAddress}:${port}/shutdown-timer?minutes=${minutes}`;
-            const response = await fetch(url, { method: 'GET' });
+            const response = await fetch(url, { method: 'GET', headers: getAuthHeaders(token) });
             if (response.ok) {
                 Alert.alert(t('power.success'), t('power.timer_set', { minutes }));
             } else {
@@ -85,7 +86,7 @@ const PowerScreen = ({ navigation }) => {
 
     const handleAbortShutdown = async () => {
         try {
-            const response = await fetch(`http://${ipAddress}:${port}/shutdown-abort`, { method: 'GET' });
+            const response = await fetch(`http://${ipAddress}:${port}/shutdown-abort`, { method: 'GET', headers: getAuthHeaders(token) });
             if (response.ok) {
                 Alert.alert(t('power.aborted'), t('power.abort_success'));
             } else {

@@ -8,6 +8,7 @@ import { LineChart } from 'react-native-chart-kit';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { usePcConnection } from '../../hooks/usePcConnection';
+import { getAuthHeaders } from '../../utils/api';
 
 const StatCard = ({ title, value, subtitle, icon, color, unit }) => {
     return (
@@ -34,7 +35,7 @@ const StatisticsScreen = ({ navigation }) => {
         cpu: '0', ram: '0', gpuTemp: '0', gpuUse: '0',
         cpuName: t('statistics.loading'), ramTot: '0', ramUse: '0', gpuName: t('statistics.loading')
     });
-    const { baseUrl, isConnected } = usePcConnection(navigation);
+    const { baseUrl, token, isConnected } = usePcConnection(navigation);
     const [isListView, setIsListView] = useState(false);
     const [selectedMetric, setSelectedMetric] = useState('cpu');
     const [chartWidth, setChartWidth] = useState(0);
@@ -79,7 +80,10 @@ const StatisticsScreen = ({ navigation }) => {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 2500);
             try {
-                const response = await fetch(`${baseUrl}/stats`, { signal: controller.signal });
+                const response = await fetch(`${baseUrl}/stats`, {
+                    signal: controller.signal,
+                    headers: getAuthHeaders(token),
+                });
                 clearTimeout(timeoutId);
                 if (response.ok && isMounted) {
                     const data = await response.json();

@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { parseQrConnectionData, getAuthHeaders } from '../../utils/api';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -136,12 +137,10 @@ export default function QrScannerScreen({ navigation }) {
             Vibration.vibrate(30);
         } catch (_) {}
 
-        const trimmed = (data || '').trim();
-        const parts = trimmed.split(":");
+        const parsed = parseQrConnectionData(data);
 
-        if (parts.length === 2 && parts[0].includes(".")) {
-            const ip = parts[0].trim();
-            const port = parts[1].trim();
+        if (parsed) {
+            const { ip, port, token } = parsed;
 
             setServerIp(ip);
             setServerPort(port);
@@ -151,6 +150,7 @@ export default function QrScannerScreen({ navigation }) {
             try {
                 await AsyncStorage.setItem('@pc_ip_address', ip);
                 await AsyncStorage.setItem('@pc_port', port);
+                await AsyncStorage.setItem('@pc_token', token);
             } catch (err) {
                 console.error("Storage error", err);
             }
@@ -180,7 +180,10 @@ export default function QrScannerScreen({ navigation }) {
             let isOk = false;
             let elapsed = 0;
             try {
-                const res = await fetch(`http://${ip}:${port}/ping`, { signal: controller.signal });
+                const res = await fetch(`http://${ip}:${port}/ping`, {
+                    signal: controller.signal,
+                    headers: getAuthHeaders(token),
+                });
                 clearTimeout(timeoutId);
                 elapsed = Date.now() - startTime;
                 if (res.ok) isOk = true;

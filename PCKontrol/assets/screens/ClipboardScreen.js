@@ -5,12 +5,13 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { usePcConnection } from '../../hooks/usePcConnection';
+import { getAuthHeaders } from '../../utils/api';
 
 const ClipboardScreen = ({ navigation }) => {
     const insets = useSafeAreaInsets();
     const { t } = useTranslation();
     const [text, setText] = useState('');
-    const { baseUrl, isConnected } = usePcConnection(navigation);
+    const { baseUrl, token, isConnected } = usePcConnection(navigation);
 
     const sendToClipboard = async () => {
         if (!text.trim()) return;
@@ -22,7 +23,7 @@ const ClipboardScreen = ({ navigation }) => {
         try {
             const res = await fetch(`${baseUrl}/set-clipboard`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(token, { 'Content-Type': 'application/json' }),
                 body: JSON.stringify({ text })
             });
 

@@ -7,6 +7,7 @@ import * as ScreenOrientation from 'expo-screen-orientation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getAuthHeaders } from '../../utils/api';
 
 const FEATURES = [
     { id: 'SendCommand', icon: 'terminal', color: '#A5B4FC', label: 'features.sendCommand' },
@@ -53,6 +54,7 @@ const HomeScreen = ({ navigation }) => {
                     onPress: async () => {
                         await AsyncStorage.removeItem('@pc_ip_address');
                         await AsyncStorage.removeItem('@pc_port');
+                        await AsyncStorage.removeItem('@pc_token');
                         setIsConnected(false);
                         setPcIp('');
                         setPcPort('');
@@ -68,6 +70,7 @@ const HomeScreen = ({ navigation }) => {
         try {
             const ip = await AsyncStorage.getItem('@pc_ip_address');
             const port = await AsyncStorage.getItem('@pc_port') || '9090';
+            const token = (await AsyncStorage.getItem('@pc_token'))?.trim() || '';
             if (ip && port) {
                 setPcIp(ip);
                 setPcPort(port);
@@ -75,7 +78,10 @@ const HomeScreen = ({ navigation }) => {
                 const timeoutId = setTimeout(() => controller.abort(), 2000);
 
                 const startTime = Date.now();
-                const res = await fetch(`http://${ip}:${port}/ping`, { signal: controller.signal });
+                const res = await fetch(`http://${ip}:${port}/ping`, {
+                    signal: controller.signal,
+                    headers: getAuthHeaders(token),
+                });
                 const pingTime = Date.now() - startTime;
 
                 clearTimeout(timeoutId);

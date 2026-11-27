@@ -22,12 +22,13 @@ import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ALL_DECK_BUTTONS, DEFAULT_DECK_IDS, CHROME_DECK_IDS, SPOTIFY_DECK_IDS, ANTIGRAVITY_DECK_IDS, getDeckBtnTitle } from '../../constants';
+import { getAuthHeaders } from '../../utils/api';
 
 
-const fetchWithTimeout = (url, ms = 4000) => {
+const fetchWithTimeout = (url, ms = 4000, headers = {}) => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), ms);
-    return fetch(url, { signal: controller.signal })
+    return fetch(url, { signal: controller.signal, headers })
         .finally(() => clearTimeout(timer));
 };
 
@@ -294,6 +295,7 @@ const DeckScreen = ({ navigation }) => {
     const statsTimerRef = useRef(null);
     const pingTimerRef = useRef(null);
     const activeAppTimerRef = useRef(null);
+    const tokenRef = useRef('');
     const allBtnsRef = useRef([]);
     const activeProfileRef = useRef('default');
     const isYouTubeActiveRef = useRef(false);
@@ -406,9 +408,12 @@ const DeckScreen = ({ navigation }) => {
         try {
             const savedIP = await AsyncStorage.getItem('@pc_ip_address');
             const savedPort = await AsyncStorage.getItem('@pc_port');
+            const savedToken = (await AsyncStorage.getItem('@pc_token'))?.trim() || '';
             const savedActiveIds = await AsyncStorage.getItem('@active_deck_ids');
             const savedCustom = await AsyncStorage.getItem('@custom_buttons');
             const savedViewMode = await AsyncStorage.getItem('@deck_view_mode');
+
+            tokenRef.current = savedToken;
 
             const cols = savedViewMode === '12' ? 6 : 4;
             setGridCols(cols);
@@ -455,7 +460,7 @@ const DeckScreen = ({ navigation }) => {
 
     const fetchStats = async (url) => {
         try {
-            const res = await fetchWithTimeout(`${url}/stats`, 4000);
+            const res = await fetchWithTimeout(`${url}/stats`, 4000, getAuthHeaders(tokenRef.current));
             if (res.ok) {
                 const data = await res.json();
                 setCpu(data.cpu ?? '--');
@@ -478,7 +483,7 @@ const DeckScreen = ({ navigation }) => {
 
     const fetchActiveApp = async (url) => {
         try {
-            const res = await fetchWithTimeout(`${url}/active-app`, 2000);
+            const res = await fetchWithTimeout(`${url}/active-app`, 2000, getAuthHeaders(tokenRef.current));
             if (res.ok) {
                 const data = await res.json();
                 // Profil ve YouTube kontrolü
@@ -508,7 +513,7 @@ const DeckScreen = ({ navigation }) => {
 
     const checkConnection = async (url) => {
         try {
-            const res = await fetchWithTimeout(`${url}/stats`, 3000);
+            const res = await fetchWithTimeout(`${url}/stats`, 3000, getAuthHeaders(tokenRef.current));
             setIsConnected(res.ok);
         } catch {
             setIsConnected(false);
@@ -609,7 +614,7 @@ const DeckScreen = ({ navigation }) => {
     const handleLock = async () => {
         if (!baseUrl) return;
         try {
-            await fetch(`${baseUrl}/lock-pc`);
+            await fetch(`${baseUrl}/lock-pc`, { headers: getAuthHeaders(tokenRef.current) });
         } catch (e) {
             Alert.alert(t('deck.error'), t('deck.lock_failed'));
         }
@@ -636,7 +641,7 @@ const DeckScreen = ({ navigation }) => {
         } else {
             url = `${baseUrl}${item.endpoint}`;
         }
-        fetchWithTimeout(url, 6000).catch(() => { });
+        fetchWithTimeout(url, 6000, getAuthHeaders(tokenRef.current)).catch(() => { });
     }, [baseUrl]);
 
     const gridScale = combinedAnim.interpolate({
@@ -1042,7 +1047,7 @@ const DeckScreen = ({ navigation }) => {
                                 {/* Yukarı */}
                                 <TouchableOpacity
                                     style={styles.dirBtn}
-                                    onPress={() => fetchWithTimeout(`${baseUrl}/send-key?vk=38`, 2000).catch(() => { })}
+                                    onPress={() => fetchWithTimeout(`${baseUrl}/send-key?vk=38`, 2000, getAuthHeaders(tokenRef.current)).catch(() => { })}
                                 >
                                     <FontAwesome5 name="chevron-up" size={24} color="#FFF" />
                                 </TouchableOpacity>
@@ -1051,7 +1056,7 @@ const DeckScreen = ({ navigation }) => {
                                     {/* Sol */}
                                     <TouchableOpacity
                                         style={styles.dirBtn}
-                                        onPress={() => fetchWithTimeout(`${baseUrl}/send-key?vk=37`, 2000).catch(() => { })}
+                                        onPress={() => fetchWithTimeout(`${baseUrl}/send-key?vk=37`, 2000, getAuthHeaders(tokenRef.current)).catch(() => { })}
                                     >
                                         <FontAwesome5 name="chevron-left" size={24} color="#FFF" />
                                     </TouchableOpacity>
@@ -1060,7 +1065,7 @@ const DeckScreen = ({ navigation }) => {
                                     <TouchableOpacity
                                         style={[styles.dirBtn, { backgroundColor: '#9B59B6', borderColor: '#9B59B6' }]}
                                         onPress={() => {
-                                            fetchWithTimeout(`${baseUrl}/send-key?vk=13`, 2000).catch(() => { });
+                                            fetchWithTimeout(`${baseUrl}/send-key?vk=13`, 2000, getAuthHeaders(tokenRef.current)).catch(() => { });
                                             closeWinTabModal();
                                         }}
                                     >
@@ -1070,7 +1075,7 @@ const DeckScreen = ({ navigation }) => {
                                     {/* Sağ */}
                                     <TouchableOpacity
                                         style={styles.dirBtn}
-                                        onPress={() => fetchWithTimeout(`${baseUrl}/send-key?vk=39`, 2000).catch(() => { })}
+                                        onPress={() => fetchWithTimeout(`${baseUrl}/send-key?vk=39`, 2000, getAuthHeaders(tokenRef.current)).catch(() => { })}
                                     >
                                         <FontAwesome5 name="chevron-right" size={24} color="#FFF" />
                                     </TouchableOpacity>
@@ -1079,7 +1084,7 @@ const DeckScreen = ({ navigation }) => {
                                 {/* Aşağı */}
                                 <TouchableOpacity
                                     style={styles.dirBtn}
-                                    onPress={() => fetchWithTimeout(`${baseUrl}/send-key?vk=40`, 2000).catch(() => { })}
+                                    onPress={() => fetchWithTimeout(`${baseUrl}/send-key?vk=40`, 2000, getAuthHeaders(tokenRef.current)).catch(() => { })}
                                 >
                                     <FontAwesome5 name="chevron-down" size={24} color="#FFF" />
                                 </TouchableOpacity>

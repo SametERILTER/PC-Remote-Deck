@@ -17,6 +17,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as NavigationBar from 'expo-navigation-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import { getAuthHeaders } from '../../utils/api';
 
 const SPEED_PRESETS = [
     { label: '1x', factor: 1.5 },
@@ -35,6 +36,7 @@ const MouseScreen = ({ navigation }) => {
     const [speedIndex, setSpeedIndex] = useState(1); // Varsayılan 2x
 
     const wsRef = useRef(null);
+    const tokenRef = useRef('');
     const reconnectTimerRef = useRef(null);
     const isComponentMounted = useRef(true);
 
@@ -127,7 +129,7 @@ const MouseScreen = ({ navigation }) => {
     };
 
     // WebSocket Bağlantısı
-    const connectWebSocket = useCallback((ip, port) => {
+    const connectWebSocket = useCallback((ip, port, token = '') => {
         if (!ip || !port) return;
 
         try {
@@ -135,7 +137,8 @@ const MouseScreen = ({ navigation }) => {
                 wsRef.current.close();
             }
 
-            const wsUrl = `ws://${ip.trim()}:${port.trim()}/ws/mouse`;
+            const tokenQuery = token ? `?token=${encodeURIComponent(token)}` : '';
+            const wsUrl = `ws://${ip.trim()}:${port.trim()}/ws/mouse${tokenQuery}`;
             const ws = new WebSocket(wsUrl);
 
             ws.onopen = () => {
@@ -149,7 +152,7 @@ const MouseScreen = ({ navigation }) => {
                 clearTimeout(reconnectTimerRef.current);
                 reconnectTimerRef.current = setTimeout(() => {
                     if (isComponentMounted.current) {
-                        connectWebSocket(ip, port);
+                        connectWebSocket(ip, port, token);
                     }
                 }, 2500);
             };
@@ -169,9 +172,11 @@ const MouseScreen = ({ navigation }) => {
         try {
             const savedIP = await AsyncStorage.getItem('@pc_ip_address');
             const savedPort = await AsyncStorage.getItem('@pc_port') || '9090';
+            const savedToken = (await AsyncStorage.getItem('@pc_token'))?.trim() || '';
+            tokenRef.current = savedToken;
             if (savedIP && savedPort) {
                 setBaseUrl(`http://${savedIP.trim()}:${savedPort.trim()}`);
-                connectWebSocket(savedIP, savedPort);
+                connectWebSocket(savedIP, savedPort, savedToken);
             }
         } catch {}
     };
@@ -239,7 +244,7 @@ const MouseScreen = ({ navigation }) => {
             if (now - lastHttpSendTime.current < 25) return;
             lastHttpSendTime.current = now;
             try {
-                fetch(`${baseUrl}/mouse-move?dx=${dx}&dy=${dy}`);
+                fetch(`${baseUrl}/mouse-move?dx=${dx}&dy=${dy}`, { headers: getAuthHeaders(tokenRef.current) });
             } catch {}
         }
     };
@@ -285,7 +290,7 @@ const MouseScreen = ({ navigation }) => {
             wsRef.current.send(`s ${step}`);
         } else if (baseUrl) {
             try {
-                fetch(`${baseUrl}/mouse-scroll?delta=${step}`);
+                fetch(`${baseUrl}/mouse-scroll?delta=${step}`, { headers: getAuthHeaders(tokenRef.current) });
             } catch {}
         }
     };
@@ -299,7 +304,7 @@ const MouseScreen = ({ navigation }) => {
             wsRef.current.send(`c ${button}`);
         } else if (baseUrl) {
             try {
-                fetch(`${baseUrl}/mouse-click?button=${button}`);
+                fetch(`${baseUrl}/mouse-click?button=${button}`, { headers: getAuthHeaders(tokenRef.current) });
             } catch {}
         }
     };

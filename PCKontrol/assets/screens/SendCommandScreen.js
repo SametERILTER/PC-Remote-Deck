@@ -15,13 +15,14 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { usePcConnection } from '../../hooks/usePcConnection';
+import { getAuthHeaders } from '../../utils/api';
 
 const SendCommandScreen = ({ navigation }) => {
     const insets = useSafeAreaInsets();
     const { t } = useTranslation();
     const [command, setCommand] = useState('');
     const [history, setHistory] = useState([]);
-    const { baseUrl, isConnected } = usePcConnection(navigation);
+    const { baseUrl, token, isConnected } = usePcConnection(navigation);
     const [loading, setLoading] = useState(false);
     const scrollViewRef = useRef();
 
@@ -39,7 +40,9 @@ const SendCommandScreen = ({ navigation }) => {
 
         try {
             const encodedCmd = encodeURIComponent(cmdToSend);
-            const response = await fetch(`${baseUrl}/run-command?cmd=${encodedCmd}`);
+            const response = await fetch(`${baseUrl}/run-command?cmd=${encodedCmd}`, {
+                headers: getAuthHeaders(token),
+            });
             const result = await response.text();
 
             if (response.ok) {

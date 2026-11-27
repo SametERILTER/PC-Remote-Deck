@@ -17,6 +17,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { usePcConnection } from '../../hooks/usePcConnection';
+import { getAuthHeaders } from '../../utils/api';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -28,7 +29,7 @@ const FileTransferScreen = ({ navigation }) => {
     const { t } = useTranslation();
     const [files, setFiles] = useState([]);
     const [uploading, setUploading] = useState(false);
-    const { baseUrl, isConnected } = usePcConnection(navigation);
+    const { baseUrl, token, isConnected } = usePcConnection(navigation);
 
     const cardScale = useRef(new Animated.Value(1)).current;
     const cardTranslateY = useRef(new Animated.Value(0)).current;
@@ -130,6 +131,7 @@ const FileTransferScreen = ({ navigation }) => {
                     fieldName: 'file',
                     httpMethod: 'POST',
                     uploadType: FileSystem.FileSystemUploadType?.MULTIPART ?? 1,
+                    headers: getAuthHeaders(token),
                 });
 
                 if (uploadResult.status >= 200 && uploadResult.status < 300) {

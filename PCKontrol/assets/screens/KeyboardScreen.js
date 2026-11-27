@@ -14,12 +14,13 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { usePcConnection } from '../../hooks/usePcConnection';
+import { getAuthHeaders } from '../../utils/api';
 
 const KeyboardScreen = ({ navigation }) => {
     const insets = useSafeAreaInsets();
     const { t } = useTranslation();
     const [text, setText] = useState('');
-    const { baseUrl, isConnected } = usePcConnection(navigation);
+    const { baseUrl, token, isConnected } = usePcConnection(navigation);
     const [isRealtime, setIsRealtime] = useState(true);
     const inputRef = useRef(null);
     const lastSentText = useRef('');
@@ -35,7 +36,7 @@ const KeyboardScreen = ({ navigation }) => {
         if (!baseUrl || !char) return;
         try {
             const encodedChar = encodeURIComponent(char);
-            await fetch(`${baseUrl}/type-text?text=${encodedChar}`);
+            await fetch(`${baseUrl}/type-text?text=${encodedChar}`, { headers: getAuthHeaders(token) });
         } catch (e) {
             console.log('Type error');
         }
@@ -44,7 +45,7 @@ const KeyboardScreen = ({ navigation }) => {
     const sendBackspace = async () => {
         if (!baseUrl) return;
         try {
-            await fetch(`${baseUrl}/backspace`);
+            await fetch(`${baseUrl}/backspace`, { headers: getAuthHeaders(token) });
         } catch (e) {
             console.log('Backspace error');
         }
@@ -53,7 +54,7 @@ const KeyboardScreen = ({ navigation }) => {
     const sendEnter = async () => {
         if (!baseUrl) return;
         try {
-            await fetch(`${baseUrl}/enter`);
+            await fetch(`${baseUrl}/enter`, { headers: getAuthHeaders(token) });
         } catch (e) {
             console.log('Enter error');
         }
@@ -88,7 +89,7 @@ const KeyboardScreen = ({ navigation }) => {
         if (!text || !baseUrl) return;
         try {
             const encodedText = encodeURIComponent(text);
-            await fetch(`${baseUrl}/type-text?text=${encodedText}`);
+            await fetch(`${baseUrl}/type-text?text=${encodedText}`, { headers: getAuthHeaders(token) });
             setText('');
             lastSentText.current = '';
         } catch (e) {

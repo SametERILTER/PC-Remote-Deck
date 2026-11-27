@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getStoredConnection, getAuthHeaders } from '../utils/api';
 
 /**
- * Reads PC IP/Port from AsyncStorage on mount and screen focus,
- * and polls /ping to track real-time server connectivity.
+ * Reads PC IP/Port/Token from AsyncStorage on mount and screen focus,
+ * and polls /ping with auth headers to track real-time server connectivity.
  */
 export function usePcConnection(navigation, pingIntervalMs = 5000) {
     const [ipAddress, setIpAddress] = useState('');
     const [port, setPort] = useState('9090');
+    const [token, setToken] = useState('');
     const [baseUrl, setBaseUrl] = useState('');
     const [isConnected, setIsConnected] = useState(false);
     const [isLoaded, setIsLoaded] = useState(false);
@@ -17,30 +18,33 @@ export function usePcConnection(navigation, pingIntervalMs = 5000) {
 
     const checkConnection = useCallback(async () => {
         try {
-            const savedIP = (await AsyncStorage.getItem('@pc_ip_address'))?.trim() || '';
-            const savedPort = (await AsyncStorage.getItem('@pc_port'))?.trim() || '9090';
+            const { ip, port: savedPort, token: savedToken, baseUrl: url } = await getStoredConnection();
 
             if (!mountedRef.current) return;
 
-            if (!savedIP) {
+            if (!ip) {
                 setIpAddress('');
                 setPort(savedPort);
+                setToken(savedToken);
                 setBaseUrl('');
                 setIsConnected(false);
                 setIsLoaded(true);
                 return;
             }
 
-            const url = `http://${savedIP}:${savedPort}`;
-            setIpAddress(savedIP);
+            setIpAddress(ip);
             setPort(savedPort);
+            setToken(savedToken);
             setBaseUrl(url);
             setIsLoaded(true);
 
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 2000);
             try {
-                const res = await fetch(`${url}/ping`, { signal: controller.signal });
+                const res = await fetch(`${url}/ping`, {
+                    signal: controller.signal,
+                    headers: getAuthHeaders(savedToken),
+                });
                 clearTimeout(timeoutId);
                 if (mountedRef.current) {
                     setIsConnected(res.ok);
@@ -81,5 +85,5 @@ export function usePcConnection(navigation, pingIntervalMs = 5000) {
         };
     }, [navigation, checkConnection, pingIntervalMs]);
 
-    return { ipAddress, port, baseUrl, isConnected, isLoaded, checkConnection };
+    return { ipAddress, port, token, baseUrl, isConnected, isLoaded, checkConnection };
 }

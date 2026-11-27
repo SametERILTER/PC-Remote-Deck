@@ -17,6 +17,7 @@ import * as NavigationBar from 'expo-navigation-bar';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import { getAuthHeaders } from '../../utils/api';
 
 const WindowItem = ({ window, scaleX, scaleY, onMove, onClose }) => {
     const pan = useRef(new Animated.ValueXY({ x: window.x * scaleX, y: window.y * scaleY })).current;
@@ -91,6 +92,7 @@ const WindowManagerScreen = ({ navigation }) => {
     const [pcResolution, setPcResolution] = useState({ width: 1920, height: 1080 });
     const [loading, setLoading] = useState(true);
     const windowInterval = useRef(null);
+    const tokenRef = useRef('');
 
     const screenWidth = Dimensions.get('window').width;
     const screenHeight = Dimensions.get('window').height;
@@ -147,6 +149,8 @@ const WindowManagerScreen = ({ navigation }) => {
         try {
             const savedIP = await AsyncStorage.getItem('@pc_ip_address');
             const savedPort = (await AsyncStorage.getItem('@pc_port')) || '9090';
+            const savedToken = (await AsyncStorage.getItem('@pc_token'))?.trim() || '';
+            tokenRef.current = savedToken;
             if (savedIP) {
                 setBaseUrl(`http://${savedIP.trim()}:${savedPort.trim()}`);
             }
@@ -157,7 +161,7 @@ const WindowManagerScreen = ({ navigation }) => {
 
     const fetchScreenInfo = async () => {
         try {
-            const response = await fetch(`${baseUrl}/screen-info`);
+            const response = await fetch(`${baseUrl}/screen-info`, { headers: getAuthHeaders(tokenRef.current) });
             const data = await response.json();
             if (data.width && data.height) {
                 setPcResolution(data);
@@ -169,7 +173,7 @@ const WindowManagerScreen = ({ navigation }) => {
 
     const fetchWindows = async () => {
         try {
-            const response = await fetch(`${baseUrl}/windows`);
+            const response = await fetch(`${baseUrl}/windows`, { headers: getAuthHeaders(tokenRef.current) });
             if (response.ok) {
                 const data = await response.json();
                 setWindows(data);
@@ -182,7 +186,7 @@ const WindowManagerScreen = ({ navigation }) => {
 
     const moveWindow = async (id, x, y) => {
         try {
-            await fetch(`${baseUrl}/move-window?id=${id}&x=${x}&y=${y}`);
+            await fetch(`${baseUrl}/move-window?id=${id}&x=${x}&y=${y}`, { headers: getAuthHeaders(tokenRef.current) });
         } catch (e) {
             console.log('Move window error');
         }
@@ -190,7 +194,7 @@ const WindowManagerScreen = ({ navigation }) => {
 
     const closeWindow = async (id) => {
         try {
-            await fetch(`${baseUrl}/close-window-by-handle?id=${id}`);
+            await fetch(`${baseUrl}/close-window-by-handle?id=${id}`, { headers: getAuthHeaders(tokenRef.current) });
             setWindows(prev => prev.filter(w => w.id !== id));
         } catch (e) {
             console.log('Close window error');

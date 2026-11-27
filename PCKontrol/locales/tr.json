@@ -68,6 +68,8 @@
     "ip_ph": "Örn: 192.168.1.42",
     "port_label": "Port",
     "port_ph": "Örn: 5000",
+    "token_label": "Eşleştirme Anahtarı (Token)",
+    "token_ph": "PC terminalindeki token",
     "save": "Kaydet",
     "view_mode": "GÖRÜNÜM MODU",
     "view_desc": "Deck ekranında aynı anda kaç butonun görüneceğini seçin.",
