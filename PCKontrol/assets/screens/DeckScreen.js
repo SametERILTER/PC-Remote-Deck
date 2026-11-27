@@ -285,6 +285,7 @@ const DeckScreen = ({ navigation }) => {
     const [ytIsPlaying, setYtIsPlaying] = useState(true);
     const [baseUrl, setBaseUrl] = useState('');
     const [displayIp, setDisplayIp] = useState('---.---.---.---');
+    const [displayPort, setDisplayPort] = useState('9090');
     const [isConnected, setIsConnected] = useState(false);
     const [cpu, setCpu] = useState('--');
     const [ram, setRam] = useState('--');
@@ -419,6 +420,7 @@ const DeckScreen = ({ navigation }) => {
 
             setBaseUrl(url);
             setDisplayIp(ip || '---.---.---');
+            setDisplayPort(port);
 
             const customBtns = savedCustom ? JSON.parse(savedCustom) : [];
             const allBtns = [...ALL_DECK_BUTTONS, ...customBtns];
@@ -458,8 +460,12 @@ const DeckScreen = ({ navigation }) => {
                 const data = await res.json();
                 setCpu(data.cpu ?? '--');
                 setRam(data.ram ?? '--');
-                if (data.media) {
-                    setMediaTitle(data.media);
+                setMediaTitle(data.media || '');
+                if (!data.media) {
+                    setIsMediaExpanded(false);
+                }
+                if (typeof data.mediaPlaying === 'string') {
+                    setYtIsPlaying(data.mediaPlaying === 'true');
                 }
                 setIsConnected(true);
             } else {
@@ -987,7 +993,7 @@ const DeckScreen = ({ navigation }) => {
                                 </View>
                                 <View style={styles.connModalRow}>
                                     <Text style={styles.connModalLabel}>{t('home.port')}</Text>
-                                    <Text style={styles.connModalValue}>9090</Text>
+                                    <Text style={styles.connModalValue}>{displayPort}</Text>
                                 </View>
                                 <View style={styles.connModalRow}>
                                     <Text style={styles.connModalLabel}>{t('home.status')}</Text>

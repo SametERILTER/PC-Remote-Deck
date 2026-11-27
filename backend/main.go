@@ -56,6 +56,11 @@ var (
 
 	procGlobalMemoryStatusEx = kernel32.NewProc("GlobalMemoryStatusEx")
 	procGetSystemTimes       = kernel32.NewProc("GetSystemTimes")
+
+	ole32               = syscall.NewLazyDLL("ole32.dll")
+	procCoInitializeEx  = ole32.NewProc("CoInitializeEx")
+	procCoUninitialize  = ole32.NewProc("CoUninitialize")
+	procCoCreateInstance = ole32.NewProc("CoCreateInstance")
 )
 
 type MEMORYSTATUSEX struct {
@@ -735,6 +740,61 @@ var (
 	})
 )
 
+func isAudioPlaying() bool {
+	type comGUID struct {
+		Data1 uint32
+		Data2 uint16
+		Data3 uint16
+		Data4 [8]byte
+	}
+	type comObj struct {
+		lpVtbl *[8]uintptr
+	}
+
+	clsidMMDE := comGUID{0xBCDE0395, 0xE52F, 0x467C, [8]byte{0x8E, 0x3D, 0xC4, 0x57, 0x92, 0x91, 0x69, 0x2E}}
+	iidMMDE := comGUID{0xA95664D2, 0x9614, 0x4F35, [8]byte{0xA7, 0x46, 0xDE, 0x8D, 0xB6, 0x36, 0x17, 0xE6}}
+	iidMeter := comGUID{0xC02216F6, 0x8C67, 0x4B5B, [8]byte{0x9D, 0x00, 0xD0, 0x08, 0xE7, 0x3E, 0x00, 0x64}}
+
+	hr, _, _ := procCoInitializeEx.Call(0, 0x2) // COINIT_APARTMENTTHREADED
+	if hr == 0 || hr == 1 {
+		defer procCoUninitialize.Call()
+	}
+
+	var pEnumerator *comObj
+	hr, _, _ = procCoCreateInstance.Call(
+		uintptr(unsafe.Pointer(&clsidMMDE)),
+		0,
+		0x17, // CLSCTX_ALL
+		uintptr(unsafe.Pointer(&iidMMDE)),
+		uintptr(unsafe.Pointer(&pEnumerator)),
+	)
+	if hr != 0 || pEnumerator == nil {
+		return false
+	}
+	defer syscall.SyscallN(pEnumerator.lpVtbl[2], uintptr(unsafe.Pointer(pEnumerator))) // Release
+
+	var pDevice *comObj
+	hr, _, _ = syscall.SyscallN(pEnumerator.lpVtbl[4], uintptr(unsafe.Pointer(pEnumerator)), 0, 1, uintptr(unsafe.Pointer(&pDevice))) // GetDefaultAudioEndpoint(eRender, eMultimedia)
+	if hr != 0 || pDevice == nil {
+		return false
+	}
+	defer syscall.SyscallN(pDevice.lpVtbl[2], uintptr(unsafe.Pointer(pDevice))) // Release
+
+	var pMeter *comObj
+	hr, _, _ = syscall.SyscallN(pDevice.lpVtbl[3], uintptr(unsafe.Pointer(pDevice)), uintptr(unsafe.Pointer(&iidMeter)), 0x17, 0, uintptr(unsafe.Pointer(&pMeter))) // Activate
+	if hr != 0 || pMeter == nil {
+		return false
+	}
+	defer syscall.SyscallN(pMeter.lpVtbl[2], uintptr(unsafe.Pointer(pMeter))) // Release
+
+	var peak float32
+	hr, _, _ = syscall.SyscallN(pMeter.lpVtbl[3], uintptr(unsafe.Pointer(pMeter)), uintptr(unsafe.Pointer(&peak))) // GetPeakValue
+	if hr != 0 {
+		return false
+	}
+	return peak > 0.001
+}
+
 func getMediaInfo() string {
 	enumMediaMu.Lock()
 	defer enumMediaMu.Unlock()
@@ -1108,6 +1168,10 @@ func main() {
 		activeApp, activeTitle := getForegroundWindowInfo()
 		ramPct, ramTot, ramUse := getMemoryStats()
 		media := getMediaInfo()
+		mediaPlaying := "false"
+		if isAudioPlaying() {
+			mediaPlaying = "true"
+		}
 
 		statsMutex.RLock()
 		cpu := currentCpuLoad
@@ -1118,17 +1182,18 @@ func main() {
 		statsMutex.RUnlock()
 
 		stats := map[string]string{
-			"cpu":         cpu,
-			"ram":         ramPct,
-			"media":       media,
-			"gpuTemp":     gpuTemp,
-			"gpuUse":      gpuUse,
-			"cpuName":     cpuName,
-			"ramTot":      ramTot,
-			"ramUse":      ramUse,
-			"gpuName":     gpuName,
-			"activeApp":   activeApp,
-			"activeTitle": activeTitle,
+			"cpu":          cpu,
+			"ram":          ramPct,
+			"media":        media,
+			"mediaPlaying": mediaPlaying,
+			"gpuTemp":      gpuTemp,
+			"gpuUse":       gpuUse,
+			"cpuName":      cpuName,
+			"ramTot":       ramTot,
+			"ramUse":       ramUse,
+			"gpuName":      gpuName,
+			"activeApp":    activeApp,
+			"activeTitle":  activeTitle,
 		}
 
 		w.Header().Set("Content-Type", "application/json")
