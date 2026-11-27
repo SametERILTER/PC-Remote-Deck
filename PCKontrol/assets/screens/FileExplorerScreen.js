@@ -9,38 +9,29 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import { usePcConnection } from '../../hooks/usePcConnection';
 
 const FileExplorerScreen = ({ navigation }) => {
     const insets = useSafeAreaInsets();
     const { t } = useTranslation();
-    const [baseUrl, setBaseUrl] = useState('');
+    const { baseUrl, isConnected, isLoaded } = usePcConnection(navigation);
     const [currentPath, setCurrentPath] = useState('');
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        loadSettings();
-    }, []);
-
-    const loadSettings = async () => {
-        try {
-            const savedIP = await AsyncStorage.getItem('@pc_ip_address');
-            const savedPort = (await AsyncStorage.getItem('@pc_port')) || '9090';
-            if (savedIP) {
-                const url = `http://${savedIP.trim()}:${savedPort.trim()}`;
-                setBaseUrl(url);
-                fetchDrives(url);
-            } else {
-                Alert.alert(t('files.conn_err'), t('files.conn_err_desc'));
+        if (!isLoaded) return;
+        if (baseUrl) {
+            if (currentPath === '') {
+                fetchDrives(baseUrl);
             }
-        } catch (e) {
-            console.error('Settings load error', e);
+        } else {
+            Alert.alert(t('files.conn_err'), t('files.conn_err_desc'));
         }
-    };
+    }, [baseUrl, isLoaded]);
 
     const fetchDrives = async (url) => {
         setLoading(true);
@@ -257,8 +248,8 @@ const FileExplorerScreen = ({ navigation }) => {
                     <Text style={styles.headerTitle}>{t('files.title')}</Text>
                 </View>
                 <View style={styles.statusPill}>
-                    <View style={[styles.statusDot, { backgroundColor: baseUrl ? '#22C55E' : '#EF4444' }]} />
-                    <Text style={styles.statusText}>{baseUrl ? (t('home.status_connected') || 'Bağlı') : (t('home.status_disconnected') || 'Bağlantı Yok')}</Text>
+                    <View style={[styles.statusDot, { backgroundColor: isConnected ? '#22C55E' : '#EF4444' }]} />
+                    <Text style={styles.statusText}>{isConnected ? (t('home.status_connected') || 'Bağlı') : (t('home.status_disconnected') || 'Bağlantı Yok')}</Text>
                 </View>
             </View>
 

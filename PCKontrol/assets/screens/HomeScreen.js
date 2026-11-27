@@ -102,7 +102,7 @@ const HomeScreen = ({ navigation }) => {
         let orientationTimer = null;
         const unsubscribe = navigation.addListener('focus', () => {
             orientationTimer = setTimeout(() => {
-                ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
+                ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => { });
             }, 60);
             checkConnection();
             clearInterval(pingTimerRef.current);
@@ -246,7 +246,7 @@ const HomeScreen = ({ navigation }) => {
             >
                 <View style={[styles.headerBar, { paddingTop: topInset + 14 }]}>
                     <View style={styles.brandContainer}>
-                        <Text style={styles.brandTitle}>PCKONTROL</Text>
+                        <Text style={styles.brandTitle}>PCCONTROL</Text>
                     </View>
                     <TouchableOpacity
                         style={styles.headerActionBtn}

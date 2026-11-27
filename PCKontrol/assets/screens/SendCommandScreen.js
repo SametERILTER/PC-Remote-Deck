@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import {
     View,
     Text,
@@ -13,33 +13,17 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
+import { usePcConnection } from '../../hooks/usePcConnection';
 
 const SendCommandScreen = ({ navigation }) => {
     const insets = useSafeAreaInsets();
     const { t } = useTranslation();
     const [command, setCommand] = useState('');
     const [history, setHistory] = useState([]);
-    const [baseUrl, setBaseUrl] = useState('');
+    const { baseUrl, isConnected } = usePcConnection(navigation);
     const [loading, setLoading] = useState(false);
     const scrollViewRef = useRef();
-
-    useEffect(() => {
-        loadSettings();
-    }, []);
-
-    const loadSettings = async () => {
-        try {
-            const savedIP = await AsyncStorage.getItem('@pc_ip_address');
-            const savedPort = (await AsyncStorage.getItem('@pc_port')) || '9090';
-            if (savedIP) {
-                setBaseUrl(`http://${savedIP.trim()}:${savedPort.trim()}`);
-            }
-        } catch (e) {
-            console.error('Settings load error');
-        }
-    };
 
     const handleSend = async () => {
         if (!command.trim()) return;
@@ -96,8 +80,8 @@ const SendCommandScreen = ({ navigation }) => {
                         <Text style={styles.headerTitle}>{t('command.title')}</Text>
                     </View>
                     <View style={styles.statusPill}>
-                        <View style={[styles.statusDot, { backgroundColor: baseUrl ? '#22C55E' : '#EF4444' }]} />
-                        <Text style={styles.statusText}>{baseUrl ? (t('home.status_connected') || 'Bağlı') : (t('home.status_disconnected') || 'Bağlantı Yok')}</Text>
+                        <View style={[styles.statusDot, { backgroundColor: isConnected ? '#22C55E' : '#EF4444' }]} />
+                        <Text style={styles.statusText}>{isConnected ? (t('home.status_connected') || 'Bağlı') : (t('home.status_disconnected') || 'Bağlantı Yok')}</Text>
                     </View>
                 </View>
 

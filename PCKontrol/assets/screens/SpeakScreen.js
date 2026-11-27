@@ -1,34 +1,18 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ActivityIndicator, KeyboardAvoidingView, ScrollView, Platform, Modal } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
+import { usePcConnection } from '../../hooks/usePcConnection';
 
 const SpeakScreen = ({ navigation }) => {
     const insets = useSafeAreaInsets();
     const { t } = useTranslation();
     const [text, setText] = useState('');
-    const [ipAddress, setIpAddress] = useState('');
-    const [port, setPort] = useState('9090');
+    const { ipAddress, port, isConnected } = usePcConnection(navigation);
     const [isSending, setIsSending] = useState(false);
     const [isVolModalVisible, setIsVolModalVisible] = useState(false);
-
-    useEffect(() => {
-        loadConnection();
-    }, []);
-
-    const loadConnection = async () => {
-        try {
-            const savedIP = await AsyncStorage.getItem('@pc_ip_address');
-            const savedPort = (await AsyncStorage.getItem('@pc_port')) || '9090';
-            if (savedIP) setIpAddress(savedIP.trim());
-            setPort(savedPort.trim());
-        } catch (e) {
-            console.error('Bağlantı bilgileri yüklenemedi', e);
-        }
-    };
 
     const handleSpeak = async () => {
         if (!ipAddress) {
@@ -85,8 +69,8 @@ const SpeakScreen = ({ navigation }) => {
                 </View>
                 <View style={styles.headerRight}>
                     <View style={styles.statusPill}>
-                        <View style={[styles.statusDot, { backgroundColor: ipAddress ? '#22C55E' : '#EF4444' }]} />
-                        <Text style={styles.statusText}>{ipAddress ? (t('home.status_connected') || 'Bağlı') : (t('home.status_disconnected') || 'Bağlantı Yok')}</Text>
+                        <View style={[styles.statusDot, { backgroundColor: isConnected ? '#22C55E' : '#EF4444' }]} />
+                        <Text style={styles.statusText}>{isConnected ? (t('home.status_connected') || 'Bağlı') : (t('home.status_disconnected') || 'Bağlantı Yok')}</Text>
                     </View>
                     <TouchableOpacity 
                         onPress={() => setIsVolModalVisible(true)} 

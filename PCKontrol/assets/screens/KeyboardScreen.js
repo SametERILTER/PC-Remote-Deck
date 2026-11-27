@@ -12,37 +12,24 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
+import { usePcConnection } from '../../hooks/usePcConnection';
 
 const KeyboardScreen = ({ navigation }) => {
     const insets = useSafeAreaInsets();
     const { t } = useTranslation();
     const [text, setText] = useState('');
-    const [baseUrl, setBaseUrl] = useState('');
+    const { baseUrl, isConnected } = usePcConnection(navigation);
     const [isRealtime, setIsRealtime] = useState(true);
     const inputRef = useRef(null);
     const lastSentText = useRef('');
 
     useEffect(() => {
-        loadSettings();
         // Otomatik klavye açma
         setTimeout(() => {
             inputRef.current?.focus();
         }, 500);
     }, []);
-
-    const loadSettings = async () => {
-        try {
-            const savedIP = await AsyncStorage.getItem('@pc_ip_address');
-            const savedPort = (await AsyncStorage.getItem('@pc_port')) || '9090';
-            if (savedIP) {
-                setBaseUrl(`http://${savedIP.trim()}:${savedPort.trim()}`);
-            }
-        } catch (e) {
-            console.error('Settings load error');
-        }
-    };
 
     const sendChar = async (char) => {
         if (!baseUrl || !char) return;
@@ -131,8 +118,8 @@ const KeyboardScreen = ({ navigation }) => {
                     <Text style={styles.headerTitle}>{t('keyboard.title')}</Text>
                 </View>
                 <View style={styles.statusPill}>
-                    <View style={[styles.statusDot, { backgroundColor: baseUrl ? '#22C55E' : '#EF4444' }]} />
-                    <Text style={styles.statusText}>{baseUrl ? (t('home.status_connected') || 'Bağlı') : (t('home.status_disconnected') || 'Bağlantı Yok')}</Text>
+                    <View style={[styles.statusDot, { backgroundColor: isConnected ? '#22C55E' : '#EF4444' }]} />
+                    <Text style={styles.statusText}>{isConnected ? (t('home.status_connected') || 'Bağlı') : (t('home.status_disconnected') || 'Bağlantı Yok')}</Text>
                 </View>
             </View>
 

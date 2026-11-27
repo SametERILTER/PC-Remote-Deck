@@ -1,27 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
+import { usePcConnection } from '../../hooks/usePcConnection';
 
 const ClipboardScreen = ({ navigation }) => {
     const insets = useSafeAreaInsets();
     const { t } = useTranslation();
     const [text, setText] = useState('');
-    const [baseUrl, setBaseUrl] = useState('');
-
-    useEffect(() => {
-        const loadIp = async () => {
-            const ip = await AsyncStorage.getItem('@pc_ip_address');
-            const port = await AsyncStorage.getItem('@pc_port') || '9090';
-            if (ip) {
-                setBaseUrl(`http://${ip}:${port}`);
-            }
-        };
-        loadIp();
-    }, []);
+    const { baseUrl, isConnected } = usePcConnection(navigation);
 
     const sendToClipboard = async () => {
         if (!text.trim()) return;
@@ -63,8 +52,8 @@ const ClipboardScreen = ({ navigation }) => {
                     <Text style={styles.headerTitle}>{t('clipboard.title')}</Text>
                 </View>
                 <View style={styles.statusPill}>
-                    <View style={[styles.statusDot, { backgroundColor: baseUrl ? '#22C55E' : '#EF4444' }]} />
-                    <Text style={styles.statusText}>{baseUrl ? (t('home.status_connected') || 'Bağlı') : (t('home.status_disconnected') || 'Bağlantı Yok')}</Text>
+                    <View style={[styles.statusDot, { backgroundColor: isConnected ? '#22C55E' : '#EF4444' }]} />
+                    <Text style={styles.statusText}>{isConnected ? (t('home.status_connected') || 'Bağlı') : (t('home.status_disconnected') || 'Bağlantı Yok')}</Text>
                 </View>
             </View>
 

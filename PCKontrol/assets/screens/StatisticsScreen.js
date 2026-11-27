@@ -4,10 +4,10 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import * as NavigationBar from 'expo-navigation-bar';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LineChart } from 'react-native-chart-kit';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import { usePcConnection } from '../../hooks/usePcConnection';
 
 const StatCard = ({ title, value, subtitle, icon, color, unit }) => {
     return (
@@ -34,7 +34,7 @@ const StatisticsScreen = ({ navigation }) => {
         cpu: '0', ram: '0', gpuTemp: '0', gpuUse: '0',
         cpuName: t('statistics.loading'), ramTot: '0', ramUse: '0', gpuName: t('statistics.loading')
     });
-    const [baseUrl, setBaseUrl] = useState('');
+    const { baseUrl, isConnected } = usePcConnection(navigation);
     const [isListView, setIsListView] = useState(false);
     const [selectedMetric, setSelectedMetric] = useState('cpu');
     const [chartWidth, setChartWidth] = useState(0);
@@ -47,20 +47,6 @@ const StatisticsScreen = ({ navigation }) => {
     });
 
     useEffect(() => {
-        const loadSettings = async () => {
-            try {
-                const savedIP = await AsyncStorage.getItem('@pc_ip_address');
-                const savedPort = (await AsyncStorage.getItem('@pc_port')) || '9090';
-                
-                if (savedIP) {
-                    setBaseUrl(`http://${savedIP.trim()}:${savedPort.trim()}`);
-                }
-            } catch (error) {
-                console.log('Error loading settings:', error);
-            }
-        };
-        loadSettings();
-
         const enableImmersive = async () => {
             try {
                 await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
@@ -225,8 +211,8 @@ const StatisticsScreen = ({ navigation }) => {
                 <Text style={styles.headerTitle}>{t('statistics.title')}</Text>
                 
                 <View style={[styles.statusPill, { marginLeft: 14 }]}>
-                    <View style={[styles.statusDot, { backgroundColor: baseUrl ? '#22C55E' : '#EF4444' }]} />
-                    <Text style={styles.statusText}>{baseUrl ? (t('home.status_connected') || 'Bağlı') : (t('home.status_disconnected') || 'Bağlantı Yok')}</Text>
+                    <View style={[styles.statusDot, { backgroundColor: isConnected ? '#22C55E' : '#EF4444' }]} />
+                    <Text style={styles.statusText}>{isConnected ? (t('home.status_connected') || 'Bağlı') : (t('home.status_disconnected') || 'Bağlantı Yok')}</Text>
                 </View>
 
                 <View style={{ flex: 1 }} />

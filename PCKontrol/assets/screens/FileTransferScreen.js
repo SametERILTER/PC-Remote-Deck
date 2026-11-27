@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import {
     View,
     Text,
@@ -13,10 +13,10 @@ import {
     ScrollView
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import { usePcConnection } from '../../hooks/usePcConnection';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -28,7 +28,7 @@ const FileTransferScreen = ({ navigation }) => {
     const { t } = useTranslation();
     const [files, setFiles] = useState([]);
     const [uploading, setUploading] = useState(false);
-    const [baseUrl, setBaseUrl] = useState('');
+    const { baseUrl, isConnected } = usePcConnection(navigation);
 
     const cardScale = useRef(new Animated.Value(1)).current;
     const cardTranslateY = useRef(new Animated.Value(0)).current;
@@ -37,22 +37,6 @@ const FileTransferScreen = ({ navigation }) => {
 
     const [statusText, setStatusText] = useState(t('file_transfer.ready'));
     const [isSuccess, setIsSuccess] = useState(false);
-
-    useEffect(() => {
-        loadSettings();
-    }, []);
-
-    const loadSettings = async () => {
-        try {
-            const savedIP = await AsyncStorage.getItem('@pc_ip_address');
-            const savedPort = (await AsyncStorage.getItem('@pc_port')) || '9090';
-            if (savedIP) {
-                setBaseUrl(`http://${savedIP.trim()}:${savedPort.trim()}`);
-            }
-        } catch (e) {
-            console.error('Settings load error');
-        }
-    };
 
     const pickFile = async () => {
         try {
@@ -218,8 +202,8 @@ const FileTransferScreen = ({ navigation }) => {
                     <Text style={styles.headerTitle}>{t('file_transfer.title')}</Text>
                 </View>
                 <View style={styles.statusPill}>
-                    <View style={[styles.statusDot, { backgroundColor: baseUrl ? '#22C55E' : '#EF4444' }]} />
-                    <Text style={styles.statusText}>{baseUrl ? (t('home.status_connected') || 'Bağlı') : (t('home.status_disconnected') || 'Bağlantı Yok')}</Text>
+                    <View style={[styles.statusDot, { backgroundColor: isConnected ? '#22C55E' : '#EF4444' }]} />
+                    <Text style={styles.statusText}>{isConnected ? (t('home.status_connected') || 'Bağlı') : (t('home.status_disconnected') || 'Bağlantı Yok')}</Text>
                 </View>
             </View>
 
