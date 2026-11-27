@@ -233,9 +233,10 @@ type Stats struct {
 	ActiveTitle string `json:"activeTitle"`
 }
 
-func getWindows() []WindowInfo {
-	var windows []WindowInfo
-	cb := syscall.NewCallback(func(hwnd uintptr, lparam uintptr) uintptr {
+var (
+	enumWindowsMu     sync.Mutex
+	enumWindowsResult []WindowInfo
+	enumWindowsCB     = syscall.NewCallback(func(hwnd uintptr, lparam uintptr) uintptr {
 		visible, _, _ := procIsWindowVisible.Call(hwnd)
 		if visible != 0 {
 			var cloaked int32
@@ -269,7 +270,7 @@ func getWindows() []WindowInfo {
 				tStr != "Windows Shell Experience Host" &&
 				tStr != "Windows Giriş Deneyimi" &&
 				!strings.Contains(tStr, "NVIDIA GeForce Overlay") {
-				windows = append(windows, WindowInfo{
+				enumWindowsResult = append(enumWindowsResult, WindowInfo{
 					Handle: hwnd,
 					Title:  tStr,
 					X:      rect.Left,
@@ -281,7 +282,16 @@ func getWindows() []WindowInfo {
 		}
 		return 1
 	})
-	procEnumWindows.Call(cb, 0)
+)
+
+func getWindows() []WindowInfo {
+	enumWindowsMu.Lock()
+	defer enumWindowsMu.Unlock()
+
+	enumWindowsResult = nil
+	procEnumWindows.Call(enumWindowsCB, 0)
+	windows := enumWindowsResult
+	enumWindowsResult = nil
 	return windows
 }
 
@@ -552,9 +562,10 @@ func getMemoryStats() (ramPercent string, ramTot string, ramUse string) {
 	return ramPercent, ramTot, ramUse
 }
 
-func getMediaInfo() string {
-	var media string
-	cb := syscall.NewCallback(func(hwnd uintptr, lparam uintptr) uintptr {
+var (
+	enumMediaMu     sync.Mutex
+	enumMediaResult string
+	enumMediaCB     = syscall.NewCallback(func(hwnd uintptr, lparam uintptr) uintptr {
 		vis, _, _ := procIsWindowVisible.Call(hwnd)
 		if vis == 0 {
 			return 1
@@ -588,26 +599,33 @@ func getMediaInfo() string {
 
 		if pName == "spotify.exe" {
 			if tStr != "" && tStr != "Spotify" && tStr != "Spotify Free" && tStr != "Spotify Premium" && tStr != "Default IME" && tStr != "MSCTFIME UI" {
-				media = tStr
+				enumMediaResult = tStr
 				return 0 // stop enumeration
 			}
 		}
 
 		if strings.HasSuffix(pName, "chrome.exe") || strings.HasSuffix(pName, "msedge.exe") || strings.HasSuffix(pName, "firefox.exe") || strings.HasSuffix(pName, "brave.exe") || strings.HasSuffix(pName, "opera.exe") {
 			if strings.Contains(tStr, " - YouTube") {
-				media = strings.ReplaceAll(tStr, " - YouTube", "")
+				enumMediaResult = strings.ReplaceAll(tStr, " - YouTube", "")
 				return 0
 			}
 			if strings.Contains(tStr, " - Spotify") {
-				media = strings.ReplaceAll(tStr, " - Spotify", "")
+				enumMediaResult = strings.ReplaceAll(tStr, " - Spotify", "")
 				return 0
 			}
 		}
 
 		return 1
 	})
-	procEnumWindows.Call(cb, 0)
-	return media
+)
+
+func getMediaInfo() string {
+	enumMediaMu.Lock()
+	defer enumMediaMu.Unlock()
+
+	enumMediaResult = ""
+	procEnumWindows.Call(enumMediaCB, 0)
+	return enumMediaResult
 }
 
 func main() {
