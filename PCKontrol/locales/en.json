@@ -10,8 +10,7 @@
     "screenShot": "Screenshot",
     "statistics": "Statistics",
     "speak": "Speak",
-    "power": "Power",
-    "modes": "Modes"
+    "power": "Power"
   },
   "home": {
     "disconnect_title": "Disconnect",
@@ -257,6 +256,7 @@
     "files_to_send": "FILES TO SEND ({{count}})",
     "send_new": "Send New Files",
     "select": "Select Files",
+    "select_gallery": "Photos / Gallery",
     "send": "Send",
     "permission_title": "Permission Required",
     "permission_desc": "You need to grant permission to access the gallery.",
@@ -321,14 +321,6 @@
     "min_short": "min",
     "hour_short": "hour",
     "hours_min_short": "{{h}}h {{m}}m"
-  },
-  "modes": {
-    "title": "MODES",
-    "scenarios": "Scenarios",
-    "study_mode": "Study Mode",
-    "study_desc": "Opens Google Classroom and Gemini in Chrome.",
-    "stark_mode": "Stark Mode",
-    "stark_desc": "Coming soon..."
   },
   "qr": {
     "title": "QR Scanner",

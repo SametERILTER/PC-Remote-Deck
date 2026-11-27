@@ -29,7 +29,6 @@ import SendCommandScreen from './assets/screens/SendCommandScreen';
 import ScreenShotScreen from './assets/screens/ScreenShotScreen';
 import WindowManagerScreen from './assets/screens/WindowManagerScreen';
 import KeyboardScreen from './assets/screens/KeyboardScreen';
-import ModesScreen from './assets/screens/ModesScreen';
 import MouseScreen from './assets/screens/MouseScreen';
 import FileTransferScreen from './assets/screens/FileTransferScreen';
 import StatisticsScreen from './assets/screens/StatisticsScreen';
@@ -155,10 +154,6 @@ export default function App() {
           <Stack.Screen
             name="Keyboard"
             component={KeyboardScreen}
-          />
-          <Stack.Screen
-            name="Modes"
-            component={ModesScreen}
           />
           <Stack.Screen
             name="Mouse"

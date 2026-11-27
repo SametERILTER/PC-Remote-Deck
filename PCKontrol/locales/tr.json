@@ -10,8 +10,7 @@
     "screenShot": "Ekran G.",
     "statistics": "İstatistik",
     "speak": "Konuştur",
-    "power": "Güç",
-    "modes": "Modlar"
+    "power": "Güç"
   },
   "home": {
     "disconnect_title": "Bağlantıyı Kes",
@@ -257,6 +256,7 @@
     "files_to_send": "GÖNDERİLECEK DOSYALAR ({{count}})",
     "send_new": "Yeni Dosyalar Gönder",
     "select": "Dosyaları Seçin",
+    "select_gallery": "Resim / Galeri",
     "send": "Gönder",
     "permission_title": "İzin Gerekli",
     "permission_desc": "Galeriye erişim izni vermeniz gerekiyor.",
@@ -321,14 +321,6 @@
     "min_short": "dk",
     "hour_short": "saat",
     "hours_min_short": "{{h}} saat {{m}} dk"
-  },
-  "modes": {
-    "title": "MODLAR",
-    "scenarios": "Senaryolar",
-    "study_mode": "Ders Modu",
-    "study_desc": "Google Classroom ve Gemini'yi Chrome'da açar.",
-    "stark_mode": "Stark Modu",
-    "stark_desc": "Yakında eklenecek..."
   },
   "qr": {
     "title": "QR Tarayıcı",

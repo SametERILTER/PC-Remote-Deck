@@ -333,7 +333,7 @@ const FileTransferScreen = ({ navigation }) => {
                                 <View style={{ flexDirection: 'row', gap: 10, width: '100%' }}>
                                     <TouchableOpacity style={[styles.actionButtonSecondary, { flex: 1 }]} onPress={pickImage} activeOpacity={0.8}>
                                         <FontAwesome5 name="image" size={15} color="#FFFFFF" style={{ marginRight: 8 }} />
-                                        <Text style={styles.actionButtonTextSecondary}>Resim / Galeri</Text>
+                                        <Text style={styles.actionButtonTextSecondary}>{t('file_transfer.select_gallery')}</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity style={[styles.actionButtonSecondary, { flex: 1 }]} onPress={pickFile} activeOpacity={0.8}>
                                         <FontAwesome5 name="folder-open" size={15} color="#FFFFFF" style={{ marginRight: 8 }} />

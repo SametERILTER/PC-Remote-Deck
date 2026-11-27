@@ -1011,7 +1011,7 @@ func main() {
 
 	mux.HandleFunc("/set-clipboard", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
-			http.Error(w, "Sadece POST", http.StatusMethodNotAllowed)
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 		var reqBody struct {
@@ -1026,7 +1026,7 @@ func main() {
 		psCmd := fmt.Sprintf("[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('%s')) | Set-Clipboard", encoded)
 		exec.Command("powershell", "-Command", psCmd).Run()
 
-		fmt.Fprint(w, "Panoya kopyalandı")
+		fmt.Fprint(w, "Copied to clipboard")
 	})
 
 	mux.HandleFunc("/windows", func(w http.ResponseWriter, r *http.Request) {
@@ -1108,24 +1108,24 @@ func main() {
 
 	mux.HandleFunc("/vol-up", func(w http.ResponseWriter, r *http.Request) {
 		volumeUp()
-		fmt.Fprint(w, "Ses Arttırıldı")
+		fmt.Fprint(w, "Volume increased")
 	})
 
 	mux.HandleFunc("/vol-down", func(w http.ResponseWriter, r *http.Request) {
 		volumeDown()
-		fmt.Fprint(w, "Ses Kısıldı")
+		fmt.Fprint(w, "Volume decreased")
 	})
 
 	mux.HandleFunc("/mute", func(w http.ResponseWriter, r *http.Request) {
 		muteVolume()
-		fmt.Fprint(w, "Sessize Alındı")
+		fmt.Fprint(w, "Volume muted")
 	})
 
 	mux.HandleFunc("/set-volume", func(w http.ResponseWriter, r *http.Request) {
 		volStr := r.URL.Query().Get("level")
 		vol, err := strconv.Atoi(volStr)
 		if err != nil || vol < 0 || vol > 100 {
-			http.Error(w, "Hata", http.StatusBadRequest)
+			http.Error(w, "Invalid volume level", http.StatusBadRequest)
 			return
 		}
 
@@ -1140,62 +1140,62 @@ func main() {
 
 	mux.HandleFunc("/play-pause", func(w http.ResponseWriter, r *http.Request) {
 		mediaPlayPause()
-		fmt.Fprint(w, "Oynat/Durdur")
+		fmt.Fprint(w, "Play/Pause")
 	})
 
 	mux.HandleFunc("/prev", func(w http.ResponseWriter, r *http.Request) {
 		mediaPrev()
-		fmt.Fprint(w, "Önceki Şarkı")
+		fmt.Fprint(w, "Previous track")
 	})
 
 	mux.HandleFunc("/next", func(w http.ResponseWriter, r *http.Request) {
 		mediaNext()
-		fmt.Fprint(w, "Sonraki Şarkı")
+		fmt.Fprint(w, "Next track")
 	})
 
 	mux.HandleFunc("/chrome-new-tab", func(w http.ResponseWriter, r *http.Request) {
 		sendKeyCombo([]uint16{VK_CONTROL}, 'T')
-		fmt.Fprint(w, "Chrome Yeni Sekme")
+		fmt.Fprint(w, "Chrome new tab")
 	})
 
 	mux.HandleFunc("/chrome-close-tab", func(w http.ResponseWriter, r *http.Request) {
 		sendKeyCombo([]uint16{VK_CONTROL}, 'W')
-		fmt.Fprint(w, "Chrome Sekme Kapat")
+		fmt.Fprint(w, "Chrome close tab")
 	})
 
 	mux.HandleFunc("/chrome-refresh", func(w http.ResponseWriter, r *http.Request) {
 		sendKey(VK_F5)
-		fmt.Fprint(w, "Chrome Yenile")
+		fmt.Fprint(w, "Chrome refresh")
 	})
 
 	mux.HandleFunc("/chrome-next-tab", func(w http.ResponseWriter, r *http.Request) {
 		sendKeyCombo([]uint16{VK_CONTROL}, VK_TAB)
-		fmt.Fprint(w, "Chrome Sonraki Sekme")
+		fmt.Fprint(w, "Chrome next tab")
 	})
 
 	mux.HandleFunc("/chrome-prev-tab", func(w http.ResponseWriter, r *http.Request) {
 		sendKeyCombo([]uint16{VK_CONTROL, VK_SHIFT}, VK_TAB)
-		fmt.Fprint(w, "Chrome Önceki Sekme")
+		fmt.Fprint(w, "Chrome previous tab")
 	})
 
 	mux.HandleFunc("/chrome-incognito", func(w http.ResponseWriter, r *http.Request) {
 		sendKeyCombo([]uint16{VK_CONTROL, VK_SHIFT}, 'N')
-		fmt.Fprint(w, "Chrome Gizli Sekme")
+		fmt.Fprint(w, "Chrome incognito tab")
 	})
 
 	mux.HandleFunc("/chrome-back", func(w http.ResponseWriter, r *http.Request) {
 		sendKeyCombo([]uint16{VK_MENU}, VK_LEFT)
-		fmt.Fprint(w, "Chrome Geri Git")
+		fmt.Fprint(w, "Chrome back")
 	})
 
 	mux.HandleFunc("/spotify-search", func(w http.ResponseWriter, r *http.Request) {
 		sendKeyCombo([]uint16{VK_CONTROL}, 'L')
-		fmt.Fprint(w, "Spotify Arama")
+		fmt.Fprint(w, "Spotify search")
 	})
 
 	mux.HandleFunc("/code-terminal", func(w http.ResponseWriter, r *http.Request) {
 		sendKeyCombo([]uint16{VK_CONTROL}, VK_OEM_3)
-		fmt.Fprint(w, "Terminal Aç")
+		fmt.Fprint(w, "Open terminal")
 	})
 
 	mux.HandleFunc("/open-path", func(w http.ResponseWriter, r *http.Request) {
@@ -1220,10 +1220,10 @@ func main() {
 			}
 
 			if err != nil {
-				fmt.Fprintf(w, "Hata: %s", err.Error())
+				http.Error(w, "Error: "+err.Error(), http.StatusInternalServerError)
 				return
 			}
-			fmt.Fprint(w, "Açıldı")
+			fmt.Fprint(w, "Opened")
 		}
 	})
 
@@ -1239,17 +1239,17 @@ func main() {
 			}
 			err := exec.Command("cmd", "/C", "start", "", "explorer.exe", appPath).Run()
 			if err != nil {
-				fmt.Fprintf(w, "Hata: %s", err.Error())
+				http.Error(w, "Error: "+err.Error(), http.StatusInternalServerError)
 				return
 			}
-			fmt.Fprint(w, "Açıldı")
+			fmt.Fprint(w, "Opened")
 		}
 	})
 
 	mux.HandleFunc("/installed-apps", func(w http.ResponseWriter, r *http.Request) {
 		out, err := exec.Command("powershell", "-NoProfile", "-Command", "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-StartApps | ConvertTo-Json").Output()
 		if err != nil {
-			http.Error(w, "Uygulamalar listelenemedi", http.StatusInternalServerError)
+			http.Error(w, "Failed to list installed apps", http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -1260,86 +1260,86 @@ func main() {
 		keysStr := r.URL.Query().Get("keys")
 		if keysStr != "" {
 			sendKeysString(keysStr)
-			fmt.Fprint(w, "Kombinasyon Gönderildi")
+			fmt.Fprint(w, "Combo sent")
 		}
 	})
 
 	mux.HandleFunc("/code-save-all", func(w http.ResponseWriter, r *http.Request) {
 		sendKeyCombo([]uint16{VK_CONTROL, VK_SHIFT}, 'S')
-		fmt.Fprint(w, "Hepsini Kaydet")
+		fmt.Fprint(w, "Saved all")
 	})
 
 	mux.HandleFunc("/code-format", func(w http.ResponseWriter, r *http.Request) {
 		sendKeyCombo([]uint16{VK_MENU, VK_SHIFT}, 'F')
-		fmt.Fprint(w, "Formatla")
+		fmt.Fprint(w, "Formatted")
 	})
 
 	mux.HandleFunc("/code-find-file", func(w http.ResponseWriter, r *http.Request) {
 		sendKeyCombo([]uint16{VK_CONTROL}, 'P')
-		fmt.Fprint(w, "Dosya Bul")
+		fmt.Fprint(w, "Find file")
 	})
 
 	mux.HandleFunc("/code-run", func(w http.ResponseWriter, r *http.Request) {
 		sendKey(VK_F5)
-		fmt.Fprint(w, "Çalıştır")
+		fmt.Fprint(w, "Run")
 	})
 
 	mux.HandleFunc("/weather", func(w http.ResponseWriter, r *http.Request) {
 		openUrl("https://www.google.com/search?q=hava+durumu")
-		fmt.Fprint(w, "Hava Durumu Açıldı")
+		fmt.Fprint(w, "Weather opened")
 	})
 
 	mux.HandleFunc("/press-key", func(w http.ResponseWriter, r *http.Request) {
 		key := r.URL.Query().Get("key")
 		if key != "" {
 			sendKeysString(key)
-			fmt.Fprintf(w, "Tuş Basıldı: %s", key)
+			fmt.Fprintf(w, "Key pressed: %s", key)
 		}
 	})
 
 	mux.HandleFunc("/open-browser", func(w http.ResponseWriter, r *http.Request) {
 		openUrl("https://www.google.com")
-		fmt.Fprint(w, "Tarayıcı Açıldı")
+		fmt.Fprint(w, "Browser opened")
 	})
 
 	mux.HandleFunc("/open-youtube", func(w http.ResponseWriter, r *http.Request) {
 		openUrl("https://www.youtube.com")
-		fmt.Fprint(w, "YouTube Açıldı")
+		fmt.Fprint(w, "YouTube opened")
 	})
 
 	mux.HandleFunc("/open-spotify", func(w http.ResponseWriter, r *http.Request) {
 		exec.Command("cmd", "/C", "start spotify:").Run()
-		fmt.Fprint(w, "Spotify Açıldı")
+		fmt.Fprint(w, "Spotify opened")
 	})
 
 	mux.HandleFunc("/close-window", func(w http.ResponseWriter, r *http.Request) {
 		sendKeyCombo([]uint16{VK_MENU}, VK_F4)
-		fmt.Fprint(w, "Pencere Kapatıldı")
+		fmt.Fprint(w, "Window closed")
 	})
 
 	mux.HandleFunc("/open-chrome", func(w http.ResponseWriter, r *http.Request) {
 		exec.Command("cmd", "/C", "start chrome").Run()
-		fmt.Fprint(w, "Chrome Açıldı")
+		fmt.Fprint(w, "Chrome opened")
 	})
 
 	mux.HandleFunc("/open-notepad", func(w http.ResponseWriter, r *http.Request) {
 		exec.Command("cmd", "/C", "start notepad").Run()
-		fmt.Fprint(w, "Notepad Açıldı")
+		fmt.Fprint(w, "Notepad opened")
 	})
 
 	mux.HandleFunc("/lock-pc", func(w http.ResponseWriter, r *http.Request) {
 		exec.Command("rundll32.exe", "user32.dll,LockWorkStation").Run()
-		fmt.Fprint(w, "PC Kilitlendi")
+		fmt.Fprint(w, "PC locked")
 	})
 
 	mux.HandleFunc("/show-desktop", func(w http.ResponseWriter, r *http.Request) {
 		runPowerShell(`(New-Object -ComObject Shell.Application).ToggleDesktop()`)
-		fmt.Fprint(w, "Masaüstü Gösterildi")
+		fmt.Fprint(w, "Desktop toggled")
 	})
 
 	mux.HandleFunc("/task-manager", func(w http.ResponseWriter, r *http.Request) {
 		exec.Command("cmd", "/C", "start taskmgr").Run()
-		fmt.Fprint(w, "Görev Yöneticisi Açıldı")
+		fmt.Fprint(w, "Task Manager opened")
 	})
 
 	mux.HandleFunc("/toggle-mic", func(w http.ResponseWriter, r *http.Request) {
@@ -1347,7 +1347,7 @@ func main() {
 		// APPCOMMAND_MICROPHONE_VOLUME_MUTE = 24
 		// HWND_BROADCAST = 0xFFFF
 		procSendMessageW.Call(uintptr(0xFFFF), uintptr(0x0319), 0, uintptr(24<<16))
-		fmt.Fprint(w, "Mikrofon Aç/Kapatıldı")
+		fmt.Fprint(w, "Microphone toggled")
 	})
 
 	mux.HandleFunc("/active-app", func(w http.ResponseWriter, r *http.Request) {
@@ -1425,7 +1425,7 @@ func main() {
 		procSendInput.Call(1, uintptr(unsafe.Pointer(&inputDownTab)), uintptr(unsafe.Sizeof(inputDownTab)))
 		procSendInput.Call(1, uintptr(unsafe.Pointer(&inputUpTab)), uintptr(unsafe.Sizeof(inputUpTab)))
 		procSendInput.Call(1, uintptr(unsafe.Pointer(&inputUpWin)), uintptr(unsafe.Sizeof(inputUpWin)))
-		fmt.Fprint(w, "Windows Tab Gönderildi")
+		fmt.Fprint(w, "Windows Tab sent")
 	})
 
 	mux.HandleFunc("/send-key", func(w http.ResponseWriter, r *http.Request) {
@@ -1623,17 +1623,17 @@ func main() {
 
 	mux.HandleFunc("/upload", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
-			http.Error(w, "Sadece POST", http.StatusMethodNotAllowed)
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 
-		// 32MB max dosya boyutu
+		// 32MB max file size
 		r.ParseMultipartForm(32 << 20)
 
 		file, handler, err := r.FormFile("file")
 		if err != nil {
 			log.Println("File upload error:", err)
-			http.Error(w, "Dosya alınamadı", http.StatusInternalServerError)
+			http.Error(w, "Failed to read uploaded file", http.StatusInternalServerError)
 			return
 		}
 		defer file.Close()
@@ -1642,11 +1642,11 @@ func main() {
 
 		// User Desktop path
 		homeDir, _ := os.UserHomeDir()
-		desktopPath := homeDir + "\\Desktop\\" + handler.Filename
+		desktopPath := homeDir + "\\Desktop\\" + filepath.Base(handler.Filename)
 		dst, err := os.Create(desktopPath)
 		if err != nil {
 			log.Println("File creation error:", err)
-			http.Error(w, "Dosya kaydedilemedi", http.StatusInternalServerError)
+			http.Error(w, "Failed to save file", http.StatusInternalServerError)
 			return
 		}
 		defer dst.Close()
@@ -1656,19 +1656,7 @@ func main() {
 			return
 		}
 
-		//speak("Dosya başarıyla masaüstüne kaydedildi.")
-		fmt.Fprintf(w, "Başarıyla kaydedildi: %s", handler.Filename)
-	})
-
-	mux.HandleFunc("/mode-study", func(w http.ResponseWriter, r *http.Request) {
-		log.Println("Study Mode activated")
-
-		speak("Ders modu aktif ediliyor. İyi çalışmalar dilerim.")
-
-		exec.Command("cmd", "/c", "start chrome https://gemini.google.com/app?hl=tr").Start()
-		time.Sleep(500 * time.Millisecond)
-		exec.Command("cmd", "/c", "start chrome https://classroom.google.com/u/0/").Start()
-		fmt.Fprint(w, "Study Mode activated")
+		fmt.Fprintf(w, "Saved: %s", filepath.Base(handler.Filename))
 	})
 
 	mux.HandleFunc("/speak", func(w http.ResponseWriter, r *http.Request) {
@@ -1676,20 +1664,20 @@ func main() {
 		if text != "" {
 			go speak(text)
 		}
-		fmt.Fprint(w, "Konuşma başlatıldı")
+		fmt.Fprint(w, "Speech started")
 	})
 
 	mux.HandleFunc("/shutdown", func(w http.ResponseWriter, r *http.Request) {
 		log.Println("Shutting down computer in 3 seconds!")
 		fmt.Println("Shutting down computer in 3 seconds!")
 		exec.Command("cmd", "/c", "shutdown /s /f /t 3").Start()
-		fmt.Fprint(w, "Bilgisayar kapatılıyor")
+		fmt.Fprint(w, "Shutting down")
 	})
 
 	mux.HandleFunc("/shutdown-timer", func(w http.ResponseWriter, r *http.Request) {
 		minutes := r.URL.Query().Get("minutes")
 		if minutes == "" {
-			http.Error(w, "Süre (minutes) gerekli", http.StatusBadRequest)
+			http.Error(w, "minutes parameter is required", http.StatusBadRequest)
 			return
 		}
 
@@ -1702,14 +1690,14 @@ func main() {
 
 		cmdStr := fmt.Sprintf("shutdown /s /f /t %d", seconds)
 		exec.Command("cmd", "/c", cmdStr).Start()
-		fmt.Fprintf(w, "%d dakika sonra kapatılacak", m)
+		fmt.Fprintf(w, "Scheduled shutdown in %d minute(s)", m)
 	})
 
 	mux.HandleFunc("/shutdown-abort", func(w http.ResponseWriter, r *http.Request) {
 		log.Println("Shutdown timer aborted")
 		fmt.Println("Shutdown timer aborted")
 		exec.Command("cmd", "/c", "shutdown /a").Start()
-		fmt.Fprint(w, "Kapatma iptal edildi")
+		fmt.Fprint(w, "Shutdown aborted")
 	})
 
 	mux.HandleFunc("/type-text", func(w http.ResponseWriter, r *http.Request) {
